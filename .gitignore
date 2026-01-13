@@ -1,0 +1,54 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### OS cực kỳ quan trọng ###
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+
+### Log files (Tránh làm nặng Repo) ###
+*.log
+/logs/
+
+### Spring Boot Secrets (Bảo mật cho InternHub) ###
+# Không push file chứa mật khẩu DB thực tế
+src/main/resources/application-local.properties
+src/main/resources/application-dev.properties
+
+### Backup files ###
+*.bak
+*.swp
