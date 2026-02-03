@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public class Evaluation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "task_id", unique = true, foreignKey = @ForeignKey(name = "fk_eval_task"))
