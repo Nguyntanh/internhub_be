@@ -43,6 +43,6 @@ public class User {
 
     // Internal Enum for User Role
     public enum UserRole {
-        Admin, HR, Manager, Mentor, Intern
+        ADMIN, HR, MANAGER, MENTOR, INTERN
     }
 }

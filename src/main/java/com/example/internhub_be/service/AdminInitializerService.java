@@ -44,7 +44,7 @@ public class AdminInitializerService {
             admin.setName("Admin User");
             admin.setEmail("admin@internhub.com");
             admin.setPassword(passwordEncoder.encode("admin")); // Default password
-            admin.setRole(UserRole.Admin); // Use the internal enum
+            admin.setRole(UserRole.ADMIN); // Use the internal enum
             
             // Associate with default department
             departmentRepository.findByName("IT Department").ifPresent(admin::setDepartment);
