@@ -13,15 +13,16 @@ import lombok.AllArgsConstructor;
 public class InternshipPosition {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(columnDefinition = "TEXT")
+    @Lob
+    @Column(name = "description")
     private String description;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id", foreignKey = @ForeignKey(name = "fk_pos_department"))
-    private Department department; // Relationship to Department entity
+    @JoinColumn(name = "department_id")
+    private Department department;
 }

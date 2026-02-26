@@ -13,11 +13,15 @@ import lombok.AllArgsConstructor;
 public class Skill {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(length = 50)
-    private String type; // e.g., Technical, Soft Skill
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private Skill parent;
+
+    @Column(name = "default_weight")
+    private Integer defaultWeight = 1;
 }

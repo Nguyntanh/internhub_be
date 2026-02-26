@@ -17,10 +17,12 @@ public class InternshipProfile {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", unique = true, nullable = false, foreignKey = @ForeignKey(name = "fk_profile_user"))
+    @JoinColumn(name = "user_id", unique = true, nullable = false)
     private User user;
 
-    private String university;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "university_id")
+    private University university;
 
     @Column(length = 100)
     private String major;
@@ -35,19 +37,16 @@ public class InternshipProfile {
     @Column(columnDefinition = "ENUM('In_Progress', 'Completed', 'Extended', 'Terminated') DEFAULT 'In_Progress'")
     private InternshipStatus status = InternshipStatus.In_Progress;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "position_id", foreignKey = @ForeignKey(name = "fk_profile_position"))
+    @JoinColumn(name = "position_id")
     private InternshipPosition position;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mentor_id", foreignKey = @ForeignKey(name = "fk_profile_mentor"))
+    @JoinColumn(name = "mentor_id")
     private User mentor;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "manager_id", foreignKey = @ForeignKey(name = "fk_profile_manager"))
+    @JoinColumn(name = "manager_id")
     private User manager;
 
     // Internal Enum for Internship Status

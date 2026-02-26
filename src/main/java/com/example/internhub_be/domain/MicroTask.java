@@ -4,9 +4,9 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -19,35 +19,37 @@ public class MicroTask {
     private Long id;
 
     @Column(nullable = false)
-    private String name;
+    private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Lob
+    @Column(name = "description")
     private String description;
 
     private LocalDateTime deadline;
 
-    @Column(columnDefinition = "INT DEFAULT 1")
-    private Integer weight = 1; // Default value from DDL
-
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "ENUM('Todo', 'In_Progress', 'Submitted', 'Reviewed', 'Rejected') DEFAULT 'Todo'")
-    private MicroTaskStatus status = MicroTaskStatus.Todo; // Default value from DDL
+    private MicroTaskStatus status = MicroTaskStatus.Todo;
+
+    @Lob
+    @Column(name = "submission_link")
+    private String submissionLink;
+
+    @Lob
+    @Column(name = "submission_note")
+    private String submissionNote;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mentor_id", foreignKey = @ForeignKey(name = "fk_task_mentor"))
+    @JoinColumn(name = "mentor_id")
     private User mentor;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "intern_id", foreignKey = @ForeignKey(name = "fk_task_intern"))
+    @JoinColumn(name = "intern_id")
     private User intern;
 
-    @ManyToMany
-    @JoinTable(
-        name = "task_skill_tags",
-        joinColumns = @JoinColumn(name = "task_id"),
-        inverseJoinColumns = @JoinColumn(name = "skill_id")
-    )
-    private Set<Skill> skills = new HashSet<>();
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     // Internal Enum for MicroTask Status
     public enum MicroTaskStatus {
