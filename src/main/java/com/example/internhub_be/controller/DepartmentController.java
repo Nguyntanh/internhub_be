@@ -23,35 +23,31 @@ public class DepartmentController {
 
     @GetMapping
     public ResponseEntity<List<DepartmentResponse>> getAllDepartments() {
-        List<DepartmentResponse> departments = departmentService.getAllDepartments();
-        return ResponseEntity.ok(departments);
+        return ResponseEntity.ok(departmentService.getAllDepartments());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DepartmentResponse> getDepartmentById(@PathVariable Integer id) {
-        DepartmentResponse department = departmentService.getDepartmentById(id);
-        return ResponseEntity.ok(department);
+    public ResponseEntity<DepartmentResponse> getDepartmentById(@PathVariable Long id) {
+        return ResponseEntity.ok(departmentService.getDepartmentById(id));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DepartmentResponse> createDepartment(@Valid @RequestBody DepartmentRequest request) {
-        DepartmentResponse createdDepartment = departmentService.createDepartment(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdDepartment);
+        return ResponseEntity.status(HttpStatus.CREATED).body(departmentService.createDepartment(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DepartmentResponse> updateDepartment(
-            @PathVariable Integer id,
+            @PathVariable Long id,
             @Valid @RequestBody DepartmentRequest request) {
-        DepartmentResponse updatedDepartment = departmentService.updateDepartment(id, request);
-        return ResponseEntity.ok(updatedDepartment);
+        return ResponseEntity.ok(departmentService.updateDepartment(id, request));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteDepartment(@PathVariable Integer id) {
+    public ResponseEntity<Void> deleteDepartment(@PathVariable Long id) {
         departmentService.deleteDepartment(id);
         return ResponseEntity.noContent().build();
     }

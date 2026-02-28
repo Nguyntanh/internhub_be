@@ -32,7 +32,7 @@ public class InternshipPositionService {
     }
 
     @Transactional(readOnly = true)
-    public InternshipPositionResponse getPositionById(Integer id) {
+    public InternshipPositionResponse getPositionById(Long id) {
         InternshipPosition position = positionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Position not found with id: " + id));
         return convertToResponse(position);
@@ -50,12 +50,11 @@ public class InternshipPositionService {
             position.setDepartment(department);
         }
 
-        InternshipPosition savedPosition = positionRepository.save(position);
-        return convertToResponse(savedPosition);
+        return convertToResponse(positionRepository.save(position));
     }
 
     @Transactional
-    public InternshipPositionResponse updatePosition(Integer id, InternshipPositionRequest request) {
+    public InternshipPositionResponse updatePosition(Long id, InternshipPositionRequest request) {
         InternshipPosition position = positionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Position not found with id: " + id));
 
@@ -70,12 +69,11 @@ public class InternshipPositionService {
             position.setDepartment(null);
         }
 
-        InternshipPosition updatedPosition = positionRepository.save(position);
-        return convertToResponse(updatedPosition);
+        return convertToResponse(positionRepository.save(position));
     }
 
     @Transactional
-    public void deletePosition(Integer id) {
+    public void deletePosition(Long id) {
         if (!positionRepository.existsById(id)) {
             throw new RuntimeException("Position not found with id: " + id);
         }

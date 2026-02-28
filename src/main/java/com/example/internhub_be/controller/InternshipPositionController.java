@@ -23,35 +23,31 @@ public class InternshipPositionController {
 
     @GetMapping
     public ResponseEntity<List<InternshipPositionResponse>> getAllPositions() {
-        List<InternshipPositionResponse> positions = positionService.getAllPositions();
-        return ResponseEntity.ok(positions);
+        return ResponseEntity.ok(positionService.getAllPositions());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<InternshipPositionResponse> getPositionById(@PathVariable Integer id) {
-        InternshipPositionResponse position = positionService.getPositionById(id);
-        return ResponseEntity.ok(position);
+    public ResponseEntity<InternshipPositionResponse> getPositionById(@PathVariable Long id) {
+        return ResponseEntity.ok(positionService.getPositionById(id));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<InternshipPositionResponse> createPosition(@Valid @RequestBody InternshipPositionRequest request) {
-        InternshipPositionResponse createdPosition = positionService.createPosition(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdPosition);
+        return ResponseEntity.status(HttpStatus.CREATED).body(positionService.createPosition(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<InternshipPositionResponse> updatePosition(
-            @PathVariable Integer id,
+            @PathVariable Long id,
             @Valid @RequestBody InternshipPositionRequest request) {
-        InternshipPositionResponse updatedPosition = positionService.updatePosition(id, request);
-        return ResponseEntity.ok(updatedPosition);
+        return ResponseEntity.ok(positionService.updatePosition(id, request));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deletePosition(@PathVariable Integer id) {
+    public ResponseEntity<Void> deletePosition(@PathVariable Long id) {
         positionService.deletePosition(id);
         return ResponseEntity.noContent().build();
     }

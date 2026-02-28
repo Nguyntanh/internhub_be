@@ -10,9 +10,9 @@ import lombok.Builder;
 @AllArgsConstructor
 @Builder
 public class InternshipPositionResponse {
-    private Integer id;
+    private Long id;
     private String name;
     private String description;
-    private Integer departmentId;
+    private Long departmentId;
     private String departmentName;
 }

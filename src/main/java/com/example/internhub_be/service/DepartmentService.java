@@ -27,7 +27,7 @@ public class DepartmentService {
     }
 
     @Transactional(readOnly = true)
-    public DepartmentResponse getDepartmentById(Integer id) {
+    public DepartmentResponse getDepartmentById(Long id) {
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
         return convertToResponse(department);
@@ -35,25 +35,20 @@ public class DepartmentService {
 
     @Transactional
     public DepartmentResponse createDepartment(DepartmentRequest request) {
-        // Check if department name already exists
         if (departmentRepository.findByName(request.getName()).isPresent()) {
             throw new RuntimeException("Department with name '" + request.getName() + "' already exists");
         }
-
         Department department = new Department();
         department.setName(request.getName());
         department.setDescription(request.getDescription());
-
-        Department savedDepartment = departmentRepository.save(department);
-        return convertToResponse(savedDepartment);
+        return convertToResponse(departmentRepository.save(department));
     }
 
     @Transactional
-    public DepartmentResponse updateDepartment(Integer id, DepartmentRequest request) {
+    public DepartmentResponse updateDepartment(Long id, DepartmentRequest request) {
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
 
-        // Check if new name conflicts with existing department (excluding current one)
         departmentRepository.findByName(request.getName()).ifPresent(existingDept -> {
             if (!existingDept.getId().equals(id)) {
                 throw new RuntimeException("Department with name '" + request.getName() + "' already exists");
@@ -62,13 +57,11 @@ public class DepartmentService {
 
         department.setName(request.getName());
         department.setDescription(request.getDescription());
-
-        Department updatedDepartment = departmentRepository.save(department);
-        return convertToResponse(updatedDepartment);
+        return convertToResponse(departmentRepository.save(department));
     }
 
     @Transactional
-    public void deleteDepartment(Integer id) {
+    public void deleteDepartment(Long id) {
         if (!departmentRepository.existsById(id)) {
             throw new RuntimeException("Department not found with id: " + id);
         }
@@ -80,6 +73,7 @@ public class DepartmentService {
                 .id(department.getId())
                 .name(department.getName())
                 .description(department.getDescription())
+                .createdAt(department.getCreatedAt())
                 .build();
     }
 }
