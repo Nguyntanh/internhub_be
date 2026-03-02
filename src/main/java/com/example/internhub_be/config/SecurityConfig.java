@@ -2,28 +2,29 @@ package com.example.internhub_be.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.security.config.Customizer;
-
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import java.util.Arrays;
 import java.util.List;
 
-import com.example.internhub_be.security.JwtAuthenticationFilter; // Import JwtAuthenticationFilter
-import com.example.internhub_be.security.JwtAuthenticationEntryPoint; // Import JwtAuthenticationEntryPoint
+import com.example.internhub_be.security.JwtAuthenticationFilter; // Missing import
+import com.example.internhub_be.security.JwtAuthenticationEntryPoint; // Missing import
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity // Enable method-level security
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -53,6 +54,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Use stateless sessions
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll() // Allow unauthenticated access to auth endpoints
+                .requestMatchers("/api/admin/**").hasRole("ADMIN") // Require ADMIN role for admin endpoints
                 .anyRequest().authenticated() // Require authentication for all other requests
             );
 
