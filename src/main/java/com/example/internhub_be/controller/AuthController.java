@@ -1,3 +1,5 @@
+package com.example.internhub_be.controller;
+
 import com.example.internhub_be.domain.Function;
 import com.example.internhub_be.domain.User;
 import com.example.internhub_be.domain.RolePermission;
