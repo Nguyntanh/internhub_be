@@ -55,6 +55,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll() // Allow unauthenticated access to auth endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // Require ADMIN role for admin endpoints
+                .requestMatchers("/api/intern/**").hasRole("INTERN")   // ← thêm dòng này
+                .requestMatchers("/api/mentor/**").hasRole("MENTOR")   // ← thêm dòng này
                 .anyRequest().authenticated() // Require authentication for all other requests
             );
 
