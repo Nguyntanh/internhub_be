@@ -112,6 +112,26 @@ public class AdminUserServiceImpl implements AdminUserService {
         return mapUserToUserResponse(updatedUser); // Map User to UserResponse
     }
 
+    @Override
+    @Transactional
+    public UserResponse activateUser(String activationToken) {
+        User user = userRepository.findByActivationToken(activationToken)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "activation token", activationToken));
+
+        user.setIsActive(true);
+        user.setActivationToken(null); // Clear the activation token after activation
+        User activatedUser = userRepository.save(user);
+
+        // Ghi nhật ký audit
+        Map<String, Object> details = new HashMap<>();
+        details.put("action", "ACTIVATE_USER");
+        details.put("target_user_id", activatedUser.getId());
+        details.put("target_user_email", activatedUser.getEmail());
+        auditLogService.logAction("USER_ACTIVATED", null, details);
+
+        return mapUserToUserResponse(activatedUser);
+    }
+
     private UserResponse mapUserToUserResponse(User user) {
         UserResponse userResponse = new UserResponse();
         userResponse.setId(user.getId());

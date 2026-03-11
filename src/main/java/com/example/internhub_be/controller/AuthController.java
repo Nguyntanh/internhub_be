@@ -11,6 +11,7 @@ import com.example.internhub_be.repository.FunctionRepository;
 import com.example.internhub_be.repository.RolePermissionRepository;
 import com.example.internhub_be.repository.UserRepository;
 import com.example.internhub_be.security.JwtTokenProvider;
+import com.example.internhub_be.service.AdminUserService; // Add this import
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam; // Add this import
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -35,18 +37,21 @@ public class AuthController {
     private final UserRepository userRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final FunctionRepository functionRepository;
+    private final AdminUserService adminUserService; // Add this field
 
 
     public AuthController(AuthenticationManager authenticationManager,
                           JwtTokenProvider jwtTokenProvider,
                           UserRepository userRepository,
                           RolePermissionRepository rolePermissionRepository,
-                          FunctionRepository functionRepository) {
+                          FunctionRepository functionRepository,
+                          AdminUserService adminUserService) { // Add this parameter
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
         this.rolePermissionRepository = rolePermissionRepository;
         this.functionRepository = functionRepository;
+        this.adminUserService = adminUserService; // Assign it
     }
 
     @PostMapping("/login")
@@ -87,5 +92,11 @@ public class AuthController {
         }).collect(Collectors.toList());
 
         return new ResponseEntity<>(permissionDTOs, HttpStatus.OK);
+    }
+
+    @GetMapping("/activate")
+    public ResponseEntity<String> activateAccount(@RequestParam("token") String token) {
+        adminUserService.activateUser(token);
+        return ResponseEntity.ok("Tài khoản đã được kích hoạt thành công!");
     }
 }
