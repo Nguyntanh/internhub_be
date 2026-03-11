@@ -75,7 +75,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         // Gửi email kích hoạt
         String activationLink = "http://localhost:4200/activate?token=" + savedUser.getActivationToken();
-        emailService.sendActivationEmail(savedUser.getEmail(), activationLink);
+        emailService.sendActivationEmail(savedUser.getEmail(), activationLink, tempPassword);
 
         // Ghi nhật ký audit
         Map<String, Object> details = new HashMap<>();
