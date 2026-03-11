@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface MicroTaskRepository extends JpaRepository<MicroTask, Integer> {
+public interface MicroTaskRepository extends JpaRepository<MicroTask, Long> {
     List<MicroTask> findByIntern(User intern);
     List<MicroTask> findByInternAndStatus(User intern, MicroTaskStatus status);
     List<MicroTask> findByMentor(User mentor);

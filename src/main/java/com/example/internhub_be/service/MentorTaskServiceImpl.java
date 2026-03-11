@@ -83,7 +83,7 @@ public class MentorTaskServiceImpl implements MentorTaskService {
         }
 
         return ratings.stream().map(req -> {
-            Skill skill = skillRepository.findById(req.getSkillId().intValue())
+            Skill skill = skillRepository.findById(req.getSkillId())
                     .orElseThrow(() -> new ResourceNotFoundException("Skill", "id", req.getSkillId()));
             TaskSkillRatingId ratingId = new TaskSkillRatingId(task.getId(), skill.getId());
             TaskSkillRating rating = taskSkillRatingRepository.findById(ratingId)
@@ -113,7 +113,7 @@ public class MentorTaskServiceImpl implements MentorTaskService {
     }
 
     private MicroTask getTaskById(Long taskId) {
-        return microTaskRepository.findById(taskId.intValue())
+        return microTaskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("MicroTask", "id", taskId));
     }
 

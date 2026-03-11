@@ -68,7 +68,7 @@ public class InternTaskServiceImpl implements InternTaskService {
     }
 
     private MicroTask getTaskById(Long taskId) {
-        return microTaskRepository.findById(taskId.intValue())
+        return microTaskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("MicroTask", "id", taskId));
     }
 
