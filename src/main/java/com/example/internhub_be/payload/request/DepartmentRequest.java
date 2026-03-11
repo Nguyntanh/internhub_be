@@ -6,15 +6,21 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class DepartmentRequest {
 
-    @NotBlank(message = "Department name is required")
-    @Size(max = 100, message = "Department name must not exceed 100 characters")
+    @NotBlank(message = "Tên phòng ban không được để trống")
+    @Size(max = 100)
     private String name;
 
-    @Size(max = 1000, message = "Description must not exceed 1000 characters")
     private String description;
+
+
+
+    // Danh sách ID của Mentor/Manager muốn gán vào phòng
+    private List<Long> leaderIds;
 }

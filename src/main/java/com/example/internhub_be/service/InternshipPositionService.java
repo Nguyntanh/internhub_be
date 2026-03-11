@@ -24,9 +24,18 @@ public class InternshipPositionService {
         this.departmentRepository = departmentRepository;
     }
 
+    /**
+     * Lấy toàn bộ vị trí hoặc lọc theo departmentId.
+     * Nếu departmentId = null → trả toàn bộ (dùng cho Admin quản lý).
+     * Nếu departmentId != null → trả theo phòng ban (dùng cho HR dropdown ở E02).
+     */
     @Transactional(readOnly = true)
-    public List<InternshipPositionResponse> getAllPositions() {
-        return positionRepository.findAll().stream()
+    public List<InternshipPositionResponse> getAllPositions(Long departmentId) {
+        List<InternshipPosition> positions = (departmentId != null)
+                ? positionRepository.findByDepartmentId(departmentId)
+                : positionRepository.findAll();
+
+        return positions.stream()
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
@@ -46,7 +55,8 @@ public class InternshipPositionService {
 
         if (request.getDepartmentId() != null) {
             Department department = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new RuntimeException("Department not found with id: " + request.getDepartmentId()));
+                    .orElseThrow(() -> new RuntimeException("Department not found with id: "
+                            + request.getDepartmentId()));
             position.setDepartment(department);
         }
 
@@ -63,7 +73,8 @@ public class InternshipPositionService {
 
         if (request.getDepartmentId() != null) {
             Department department = departmentRepository.findById(request.getDepartmentId())
-                    .orElseThrow(() -> new RuntimeException("Department not found with id: " + request.getDepartmentId()));
+                    .orElseThrow(() -> new RuntimeException("Department not found with id: "
+                            + request.getDepartmentId()));
             position.setDepartment(department);
         } else {
             position.setDepartment(null);

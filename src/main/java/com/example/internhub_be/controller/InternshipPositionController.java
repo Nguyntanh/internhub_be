@@ -21,9 +21,16 @@ public class InternshipPositionController {
         this.positionService = positionService;
     }
 
+    /**
+     * Lấy tất cả vị trí, hoặc lọc theo phòng ban.
+     * HR dùng endpoint này khi tạo hồ sơ Intern (E02):
+     *   GET /api/positions              → toàn bộ
+     *   GET /api/positions?departmentId=1 → theo phòng ban
+     */
     @GetMapping
-    public ResponseEntity<List<InternshipPositionResponse>> getAllPositions() {
-        return ResponseEntity.ok(positionService.getAllPositions());
+    public ResponseEntity<List<InternshipPositionResponse>> getAllPositions(
+            @RequestParam(required = false) Long departmentId) {
+        return ResponseEntity.ok(positionService.getAllPositions(departmentId));
     }
 
     @GetMapping("/{id}")
@@ -33,7 +40,8 @@ public class InternshipPositionController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<InternshipPositionResponse> createPosition(@Valid @RequestBody InternshipPositionRequest request) {
+    public ResponseEntity<InternshipPositionResponse> createPosition(
+            @Valid @RequestBody InternshipPositionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(positionService.createPosition(request));
     }
 

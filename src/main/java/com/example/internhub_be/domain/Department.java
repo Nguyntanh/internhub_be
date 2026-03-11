@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -18,7 +19,7 @@ public class Department {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, unique = true, length = 100)
     private String name;
 
     @Lob
@@ -28,4 +29,14 @@ public class Department {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    // [ĐÃ XÓA] samplePositions (ElementCollection) — dùng InternshipPosition entity thay thế
+
+    // Danh sách vị trí thực tập thuộc phòng ban này
+    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<InternshipPosition> positions;
+
+    // Liên kết với User để lấy danh sách thành viên
+    @OneToMany(mappedBy = "department")
+    private List<User> members;
 }

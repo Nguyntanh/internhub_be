@@ -53,6 +53,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Use stateless sessions
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll() // Allow unauthenticated access to auth endpoints
+                    .requestMatchers("/api/departments", "/api/departments/**").permitAll()
+                    .requestMatchers("/api/positions", "/api/positions/**").permitAll()
                 .anyRequest().authenticated() // Require authentication for all other requests
             );
 
