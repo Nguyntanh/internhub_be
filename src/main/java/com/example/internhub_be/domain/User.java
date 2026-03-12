@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -17,7 +20,7 @@ public class User {
     private Long id;
 
     @Column(nullable = false)
-    private String name; // Changed from username to name
+    private String name;
 
     @Column(nullable = false, unique = true, length = 100)
     private String email;
@@ -25,24 +28,26 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private UserRole role;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id")
+    private Role role;
 
-    @Column(name = "is_active", columnDefinition = "TINYINT(1) DEFAULT 1")
-    private Boolean isActive = true;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = false;
+
+    @Column(name = "activation_token")
+    private String activationToken;
 
     private String avatar;
 
-    @Column(name = "number_phone", length = 15)
-    private String numberPhone;
+    @Column(name = "phone", length = 15)
+    private String phone;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id", foreignKey = @ForeignKey(name = "fk_user_department"))
-    private Department department;
-
-    // Internal Enum for User Role
-    public enum UserRole {
-        ADMIN, HR, MANAGER, MENTOR, INTERN
-    }
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 }

@@ -29,8 +29,9 @@ public class Department {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+}
 
-    // [ĐÃ XÓA] samplePositions (ElementCollection) — dùng InternshipPosition entity thay thế
+
 
     // Danh sách vị trí thực tập thuộc phòng ban này
     @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true)
