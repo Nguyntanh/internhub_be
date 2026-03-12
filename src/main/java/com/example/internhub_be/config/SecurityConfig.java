@@ -53,13 +53,16 @@ public class SecurityConfig {
             .exceptionHandling(exception -> exception.authenticationEntryPoint(authenticationEntryPoint)) // Handle unauthorized access
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Use stateless sessions
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login").permitAll() // Allow unauthenticated access to login endpoint
-                .requestMatchers("/api/auth/activate/**").permitAll() // Allow unauthenticated access to activate endpoint
-                .requestMatchers("/api/auth/**").authenticated() // All other auth endpoints require authentication
-                .requestMatchers("/api/admin/**").hasRole("ADMIN") // Require ADMIN role for admin endpoints
-                .requestMatchers("/api/auth/**").permitAll() // Allow unauthenticated access to auth endpoints
-                    .requestMatchers("/api/departments", "/api/departments/**").permitAll()
-                    .requestMatchers("/api/positions", "/api/positions/**").permitAll()
+                    .requestMatchers("/api/auth/login").permitAll()
+                    .requestMatchers("/api/auth/activate/**").permitAll()
+
+                    .requestMatchers("GET", "/api/departments").permitAll()
+                    .requestMatchers("GET", "/api/departments/**").permitAll()
+                    .requestMatchers("GET", "/api/positions").permitAll()
+                    .requestMatchers("GET", "/api/positions/**").permitAll()
+
+                    // ── Admin endpoints ───────────────────────────────────────
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated() // Require authentication for all other requests
             );
 
