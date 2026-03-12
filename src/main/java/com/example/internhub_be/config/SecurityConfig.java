@@ -57,6 +57,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/activate/**").permitAll() // Allow unauthenticated access to activate endpoint
                 .requestMatchers("/api/auth/**").authenticated() // All other auth endpoints require authentication
                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // Require ADMIN role for admin endpoints
+                .requestMatchers("/api/auth/**").permitAll() // Allow unauthenticated access to auth endpoints
+                    .requestMatchers("/api/departments", "/api/departments/**").permitAll()
+                    .requestMatchers("/api/positions", "/api/positions/**").permitAll()
                 .anyRequest().authenticated() // Require authentication for all other requests
             );
 
