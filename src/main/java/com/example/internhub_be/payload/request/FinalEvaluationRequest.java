@@ -1,4 +1,4 @@
-// ─── FinalEvaluationRequest.java ────────────────────────────────────────────
+
 package com.example.internhub_be.payload.request;
 
 import jakarta.validation.constraints.NotBlank;
