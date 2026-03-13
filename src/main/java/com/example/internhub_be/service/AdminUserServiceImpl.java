@@ -75,7 +75,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         // Gửi email kích hoạt
         String activationLink = "http://localhost:4200/activate?token=" + savedUser.getActivationToken();
-        emailService.sendActivationEmail(savedUser.getEmail(), activationLink);
+        emailService.sendActivationEmail(savedUser.getEmail(), activationLink, tempPassword);
 
         // Ghi nhật ký audit
         Map<String, Object> details = new HashMap<>();
@@ -110,6 +110,26 @@ public class AdminUserServiceImpl implements AdminUserService {
         auditLogService.logAction("USER_STATUS_UPDATED", null, details); // Pass null for performedBy for now, will fix later
 
         return mapUserToUserResponse(updatedUser); // Map User to UserResponse
+    }
+
+    @Override
+    @Transactional
+    public UserResponse activateUser(String activationToken) {
+        User user = userRepository.findByActivationToken(activationToken)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "activation token", activationToken));
+
+        user.setIsActive(true);
+        user.setActivationToken(null); // Clear the activation token after activation
+        User activatedUser = userRepository.save(user);
+
+        // Ghi nhật ký audit
+        Map<String, Object> details = new HashMap<>();
+        details.put("action", "ACTIVATE_USER");
+        details.put("target_user_id", activatedUser.getId());
+        details.put("target_user_email", activatedUser.getEmail());
+        auditLogService.logAction("USER_ACTIVATED", null, details);
+
+        return mapUserToUserResponse(activatedUser);
     }
 
     private UserResponse mapUserToUserResponse(User user) {
