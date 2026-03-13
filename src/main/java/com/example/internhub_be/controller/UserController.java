@@ -10,6 +10,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map; // Added import for Map
+
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
@@ -32,11 +34,11 @@ public class UserController {
 
     @PostMapping("/change-password")
     @PreAuthorize("isAuthenticated()") // Only authenticated users can change their password
-    public ResponseEntity<String> changePassword(@Valid @RequestBody ChangePasswordRequest changePasswordRequest) {
+    public ResponseEntity<Map<String, String>> changePassword(@Valid @RequestBody ChangePasswordRequest changePasswordRequest) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentPrincipalName = authentication.getName(); // This will be the email
 
         userService.changePassword(currentPrincipalName, changePasswordRequest);
-        return ResponseEntity.ok("Password changed successfully!");
+        return ResponseEntity.ok(Map.of("message", "Password changed successfully!"));
     }
 }

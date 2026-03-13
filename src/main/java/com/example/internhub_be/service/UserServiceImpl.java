@@ -1,13 +1,11 @@
 package com.example.internhub_be.service;
 
-import com.example.internhub_be.domain.AuditLog;
 import com.example.internhub_be.domain.InternshipProfile;
 import com.example.internhub_be.domain.User;
 import com.example.internhub_be.payload.ChangePasswordRequest;
 import com.example.internhub_be.payload.UserProfileResponse;
 import com.example.internhub_be.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,7 +19,6 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -29,15 +26,13 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
-    private final HttpServletRequest request;
     private final ObjectMapper objectMapper;
 
 
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, AuditLogService auditLogService, HttpServletRequest request, ObjectMapper objectMapper) {
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, AuditLogService auditLogService, ObjectMapper objectMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
-        this.request = request;
         this.objectMapper = objectMapper;
     }
 
