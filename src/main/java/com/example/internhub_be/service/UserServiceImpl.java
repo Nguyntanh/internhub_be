@@ -1,23 +1,44 @@
 package com.example.internhub_be.service;
 
+import com.example.internhub_be.domain.AuditLog;
 import com.example.internhub_be.domain.InternshipProfile;
 import com.example.internhub_be.domain.User;
+import com.example.internhub_be.payload.ChangePasswordRequest;
 import com.example.internhub_be.payload.UserProfileResponse;
 import com.example.internhub_be.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
+    private final HttpServletRequest request;
+    private final ObjectMapper objectMapper;
 
-    public UserServiceImpl(UserRepository userRepository) {
+
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, AuditLogService auditLogService, HttpServletRequest request, ObjectMapper objectMapper) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.auditLogService = auditLogService;
+        this.request = request;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -70,5 +91,36 @@ public class UserServiceImpl implements UserService {
         }
 
         return response;
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest changePasswordRequest) {
+        // Retrieve the authenticated user's email from SecurityContextHolder
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentAuthenticatedUserEmail = authentication.getName();
+
+        if (!currentAuthenticatedUserEmail.equals(email)) {
+            throw new BadCredentialsException("Cannot change password for another user.");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        // So khớp mật khẩu cũ
+        if (!passwordEncoder.matches(changePasswordRequest.getOldPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Incorrect old password.");
+        }
+
+        // Cập nhật mật khẩu mới
+        user.setPassword(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
+        userRepository.save(user);
+
+        // Ghi Nhật ký Hệ thống (Audit Log)
+        Map<String, Object> details = new HashMap<>();
+        details.put("timestamp", LocalDateTime.now().toString()); // Storing as String for consistent JSON representation
+
+        // Call logAction with the correct parameters
+        auditLogService.logAction("CHANGE_PASSWORD", user, details);
     }
 }
