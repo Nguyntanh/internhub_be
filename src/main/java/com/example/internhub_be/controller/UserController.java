@@ -1,6 +1,7 @@
 package com.example.internhub_be.controller;
 
 import com.example.internhub_be.payload.ChangePasswordRequest;
+import com.example.internhub_be.payload.NewAvatarUrlResponse;
 import com.example.internhub_be.payload.UserProfileResponse;
 import com.example.internhub_be.service.UserService;
 import jakarta.validation.Valid;
@@ -9,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map; // Added import for Map
 
@@ -40,5 +42,15 @@ public class UserController {
 
         userService.changePassword(currentPrincipalName, changePasswordRequest);
         return ResponseEntity.ok(Map.of("message", "Password changed successfully!"));
+    }
+
+    @PatchMapping(value = "/profile/avatar", consumes = "multipart/form-data")
+    @PreAuthorize("isAuthenticated()") // Only authenticated users can upload their avatar
+    public ResponseEntity<NewAvatarUrlResponse> updateAvatar(@RequestParam("file") MultipartFile file) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentPrincipalName = authentication.getName(); // This will be the email
+
+        NewAvatarUrlResponse newAvatarUrlResponse = userService.updateAvatar(currentPrincipalName, file);
+        return ResponseEntity.ok(newAvatarUrlResponse);
     }
 }
