@@ -20,6 +20,20 @@ public class DepartmentResponse {
 
     private List<InternshipPositionResponse> positions;
 
-    // Trả về tên thành viên thay vì UserResponse
+    /** Simple name list kept for backward-compat display */
     private List<String> memberNames;
+
+    /** Full member objects so the frontend can show/manage them */
+    private List<MemberInfo> members;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class MemberInfo {
+        private Long id;
+        private String name;
+        private String email;
+        private String roleName;
+    }
 }

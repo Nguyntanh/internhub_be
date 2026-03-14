@@ -48,7 +48,6 @@ public class DepartmentService {
         Department department = new Department();
         department.setName(request.getName());
         department.setDescription(request.getDescription());
-        // [ĐÃ XÓA] setSamplePositions — không còn dùng ElementCollection
 
         Department saved = departmentRepository.save(department);
         assignLeaders(request.getLeaderIds(), saved);
@@ -60,7 +59,6 @@ public class DepartmentService {
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
 
-        // Kiểm tra trùng tên với phòng ban KHÁC
         departmentRepository.findByName(request.getName()).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
                 throw new RuntimeException("Phòng ban '" + request.getName() + "' đã tồn tại");
@@ -69,7 +67,6 @@ public class DepartmentService {
 
         department.setName(request.getName());
         department.setDescription(request.getDescription());
-        // [ĐÃ XÓA] setSamplePositions — không còn dùng ElementCollection
 
         assignLeaders(request.getLeaderIds(), department);
         return convertToResponse(departmentRepository.save(department));
@@ -79,8 +76,64 @@ public class DepartmentService {
     public void deleteDepartment(Long id) {
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Department not found with id: " + id));
-        // cascade = CascadeType.ALL trên positions → tự động xóa InternshipPositions liên kết
+
+        // ── FIX: Unassign all members before deleting to avoid FK constraint violation ──
+        if (department.getMembers() != null && !department.getMembers().isEmpty()) {
+            List<User> members = department.getMembers();
+            members.forEach(u -> u.setDepartment(null));
+            userRepository.saveAll(members);
+        }
+
+        // cascade = CascadeType.ALL on positions → auto-deletes InternshipPositions
         departmentRepository.delete(department);
+    }
+
+    // ── NEW: Add a user to a department ──────────────────────────────────────────
+    @Transactional
+    public DepartmentResponse addMember(Long departmentId, Long userId) {
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new RuntimeException("Department not found with id: " + departmentId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        user.setDepartment(department);
+        userRepository.save(user);
+
+        // Refresh
+        Department refreshed = departmentRepository.findById(departmentId).get();
+        return convertToResponse(refreshed);
+    }
+
+    // ── NEW: Remove (unassign) a user from their department ──────────────────────
+    @Transactional
+    public DepartmentResponse removeMember(Long departmentId, Long userId) {
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new RuntimeException("Department not found with id: " + departmentId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        if (user.getDepartment() != null && user.getDepartment().getId().equals(departmentId)) {
+            user.setDepartment(null);
+            userRepository.save(user);
+        }
+
+        Department refreshed = departmentRepository.findById(departmentId).get();
+        return convertToResponse(refreshed);
+    }
+
+    // ── NEW: Move a user to another department ───────────────────────────────────
+    @Transactional
+    public void moveMember(Long userId, Long targetDepartmentId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        Department targetDept = (targetDepartmentId != null)
+                ? departmentRepository.findById(targetDepartmentId)
+                .orElseThrow(() -> new RuntimeException("Department not found with id: " + targetDepartmentId))
+                : null;
+
+        user.setDepartment(targetDept);
+        userRepository.save(user);
     }
 
     private void assignLeaders(List<Long> leaderIds, Department dept) {
@@ -117,6 +170,18 @@ public class DepartmentService {
                         .collect(Collectors.toList())
                         : Collections.emptyList();
 
+        List<DepartmentResponse.MemberInfo> members =
+                (department.getMembers() != null)
+                        ? department.getMembers().stream()
+                        .map(u -> DepartmentResponse.MemberInfo.builder()
+                                .id(u.getId())
+                                .name(u.getName())
+                                .email(u.getEmail())
+                                .roleName(u.getRole() != null ? u.getRole().getName() : null)
+                                .build())
+                        .collect(Collectors.toList())
+                        : Collections.emptyList();
+
         return DepartmentResponse.builder()
                 .id(department.getId())
                 .name(department.getName())
@@ -124,6 +189,7 @@ public class DepartmentService {
                 .createdAt(department.getCreatedAt())
                 .positions(positions)
                 .memberNames(memberNames)
+                .members(members)
                 .build();
     }
 }

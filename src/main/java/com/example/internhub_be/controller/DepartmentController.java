@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/departments")
@@ -49,6 +50,49 @@ public class DepartmentController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteDepartment(@PathVariable Long id) {
         departmentService.deleteDepartment(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Member management ────────────────────────────────────────────────────────
+
+    /**
+     * POST /api/departments/{id}/members
+     * Body: { "userId": 5 }
+     * Adds a user to this department.
+     */
+    @PostMapping("/{id}/members")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    public ResponseEntity<DepartmentResponse> addMember(
+            @PathVariable Long id,
+            @RequestBody Map<String, Long> body) {
+        Long userId = body.get("userId");
+        return ResponseEntity.ok(departmentService.addMember(id, userId));
+    }
+
+    /**
+     * DELETE /api/departments/{id}/members/{userId}
+     * Removes (unassigns) a user from this department.
+     */
+    @DeleteMapping("/{id}/members/{userId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    public ResponseEntity<DepartmentResponse> removeMember(
+            @PathVariable Long id,
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(departmentService.removeMember(id, userId));
+    }
+
+    /**
+     * PATCH /api/departments/members/{userId}/move
+     * Body: { "targetDepartmentId": 3 }   (null = unassign)
+     * Moves a user to a different department.
+     */
+    @PatchMapping("/members/{userId}/move")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('HR')")
+    public ResponseEntity<Void> moveMember(
+            @PathVariable Long userId,
+            @RequestBody Map<String, Long> body) {
+        Long targetDeptId = body.get("targetDepartmentId");
+        departmentService.moveMember(userId, targetDeptId);
         return ResponseEntity.noContent().build();
     }
 }
