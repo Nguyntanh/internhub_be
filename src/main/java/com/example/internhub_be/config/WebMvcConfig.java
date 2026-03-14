@@ -19,9 +19,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Map /assets/avatars/** to the physical uploads/avatars/ directory
         Path avatarUploadDir = Paths.get(uploadDir, "avatars").toAbsolutePath().normalize();
-        String avatarPath = avatarUploadDir.toUri().toString();
         registry.addResourceHandler("/assets/avatars/**")
-                .addResourceLocations(avatarPath);
+                .addResourceLocations("file:" + avatarUploadDir.toString() + "/");
 
         // Also add a generic resource handler for /assets/ if needed for other static files
         // Path baseUploadDir = Paths.get(uploadDir).toAbsolutePath().normalize();
