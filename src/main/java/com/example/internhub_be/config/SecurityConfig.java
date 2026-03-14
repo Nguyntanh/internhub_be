@@ -77,8 +77,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/activate/**").permitAll()
 
                         // PUBLIC DATA
-                        .requestMatchers(HttpMethod.GET,"/api/departments/**").permitAll()
-                        .requestMatchers(HttpMethod.GET,"/api/positions/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/departments").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/departments/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/positions").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/positions/**").permitAll()
                         // Static assets
                         .requestMatchers("/assets/avatars/**").permitAll()
 
