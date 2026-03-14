@@ -1,13 +1,16 @@
 package com.example.internhub_be.service;
 
 import com.example.internhub_be.domain.FinalEvaluation;
+import com.example.internhub_be.domain.InternshipProfile;
 import com.example.internhub_be.domain.MicroTask;
 import com.example.internhub_be.domain.TaskSkillRating;
 import com.example.internhub_be.domain.User;
 import com.example.internhub_be.exception.ResourceNotFoundException;
+import com.example.internhub_be.payload.UserResponse;
 import com.example.internhub_be.payload.request.FinalEvaluationRequest;
 import com.example.internhub_be.payload.response.FinalEvaluationResponse;
 import com.example.internhub_be.repository.FinalEvaluationRepository;
+import com.example.internhub_be.repository.InternshipProfileRepository;
 import com.example.internhub_be.repository.MicroTaskRepository;
 import com.example.internhub_be.repository.TaskSkillRatingRepository;
 import com.example.internhub_be.repository.UserRepository;
@@ -28,19 +31,32 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
 
     private final FinalEvaluationRepository evaluationRepository;
     private final UserRepository userRepository;
+    private final InternshipProfileRepository internshipProfileRepository;
     private final MicroTaskRepository microTaskRepository;
     private final TaskSkillRatingRepository ratingRepository;
 
-    // ─── GET ──────────────────────────────────────────────────────────────────
+    // ─── GET MY INTERNS ───────────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserResponse> getMyInterns(String mentorEmail) {
+        User mentor = userRepository.findByEmail(mentorEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("Mentor not found: " + mentorEmail));
+
+        return internshipProfileRepository.findByMentorId(mentor.getId())
+                .stream()
+                .map(profile -> mapUserToUserResponse(profile.getUser()))
+                .collect(Collectors.toList());
+    }
+
+    // ─── GET EVALUATION ───────────────────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
     public FinalEvaluationResponse getEvaluationByIntern(Long internId) {
-        // Kiểm tra intern tồn tại
         userRepository.findById(internId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", internId));
 
-        // Lấy đánh giá nếu đã có, nếu chưa vẫn trả về bảng điểm
         Optional<FinalEvaluation> evalOpt = evaluationRepository.findByInternId(internId);
 
         FinalEvaluationResponse response = new FinalEvaluationResponse();
@@ -68,13 +84,11 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
             response.setIsLocked(false);
         }
 
-        // Xây dựng bảng điểm tổng hợp từ task_skill_ratings
         buildSkillSummaries(internId, response);
-
         return response;
     }
 
-    // ─── SAVE / UPDATE DRAFT ─────────────────────────────────────────────────
+    // ─── SAVE / UPDATE DRAFT ──────────────────────────────────────────────────
 
     @Override
     @Transactional
@@ -85,11 +99,9 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
         User intern = userRepository.findById(request.getInternId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getInternId()));
 
-        // Tìm đánh giá đã có hoặc tạo mới
         FinalEvaluation evaluation = evaluationRepository.findByInternId(request.getInternId())
                 .orElse(new FinalEvaluation());
 
-        // Không cho phép chỉnh sửa sau khi đã SUBMITTED
         if (evaluation.getId() != null && evaluation.getStatus() == FinalEvaluation.EvaluationStatus.SUBMITTED) {
             throw new IllegalStateException("Đánh giá đã được gửi phê duyệt, không thể chỉnh sửa.");
         }
@@ -100,10 +112,10 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
         evaluation.setStatus(FinalEvaluation.EvaluationStatus.DRAFT);
 
         FinalEvaluation saved = evaluationRepository.save(evaluation);
-        return mapToResponse(saved, internId -> buildSkillSummaries(internId, new FinalEvaluationResponse()));
+        return mapToResponseFull(saved);
     }
 
-    // ─── SUBMIT ──────────────────────────────────────────────────────────────
+    // ─── SUBMIT ───────────────────────────────────────────────────────────────
 
     @Override
     @Transactional
@@ -114,7 +126,6 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
         FinalEvaluation evaluation = evaluationRepository.findById(evaluationId)
                 .orElseThrow(() -> new ResourceNotFoundException("FinalEvaluation", "id", evaluationId));
 
-        // Chỉ mentor phụ trách mới được gửi
         if (!evaluation.getMentor().getId().equals(mentor.getId())) {
             throw new SecurityException("Bạn không có quyền gửi phê duyệt đánh giá này.");
         }
@@ -127,37 +138,15 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
             throw new IllegalArgumentException("Vui lòng nhập nhận xét tổng kết trước khi gửi.");
         }
 
-        // Đánh dấu submitted + locked
         evaluation.setStatus(FinalEvaluation.EvaluationStatus.SUBMITTED);
         evaluation.setIsLocked(true);
         evaluation.setSubmittedAt(LocalDateTime.now());
 
         FinalEvaluation saved = evaluationRepository.save(evaluation);
-
-        // Khóa tất cả micro_tasks của intern này (không cho submit/review thêm)
-        lockInternTasks(evaluation.getIntern().getId());
-
-        FinalEvaluationResponse response = mapToResponseFull(saved);
-        return response;
+        return mapToResponseFull(saved);
     }
 
-    // ─── HELPERS ─────────────────────────────────────────────────────────────
-
-    /**
-     * Khóa tất cả task của intern bằng cách đánh dấu các task
-     * chưa hoàn tất về trạng thái cuối (REVIEWED).
-     * Task ở trạng thái Todo/In_Progress/Submitted sẽ không bị thay đổi,
-     * nhưng hệ thống sẽ từ chối mọi thao tác submit/review mới thông qua
-     * kiểm tra is_locked trong FinalEvaluation.
-     *
-     * Cách làm này không thay đổi dữ liệu task cũ, chỉ sử dụng cờ is_locked
-     * trên final_evaluation để gate các thao tác.
-     */
-    private void lockInternTasks(Long internId) {
-        // is_locked đã được set = true trên FinalEvaluation.
-        // MicroTaskService sẽ kiểm tra cờ này trước khi cho phép submit/review.
-        // Không cần thay đổi bảng micro_tasks.
-    }
+    // ─── HELPERS ──────────────────────────────────────────────────────────────
 
     private void buildSkillSummaries(Long internId, FinalEvaluationResponse response) {
         List<MicroTask> tasks = microTaskRepository.findByInternId(internId);
@@ -170,7 +159,6 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
         response.setTotalTasksAll(totalAll);
         response.setTotalTasksReviewed(totalReviewed);
 
-        // Tổng hợp điểm theo skill từ các task đã REVIEWED
         Map<Long, SkillAggregator> aggregatorMap = new LinkedHashMap<>();
 
         for (MicroTask task : tasks) {
@@ -212,12 +200,26 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
         return response;
     }
 
-    private FinalEvaluationResponse mapToResponse(FinalEvaluation eval,
-            java.util.function.Function<Long, FinalEvaluationResponse> unused) {
-        return mapToResponseFull(eval);
+    private UserResponse mapUserToUserResponse(User user) {
+        UserResponse resp = new UserResponse();
+        resp.setId(user.getId());
+        resp.setName(user.getName());
+        resp.setEmail(user.getEmail());
+        resp.setIsActive(user.getIsActive());
+        resp.setPhone(user.getPhone());
+        resp.setAvatar(user.getAvatar());
+        resp.setCreatedAt(user.getCreatedAt());
+        if (user.getRole() != null) {
+            resp.setRoleId(user.getRole().getId());
+            resp.setRoleName(user.getRole().getName());
+        }
+        if (user.getDepartment() != null) {
+            resp.setDepartmentId(user.getDepartment().getId());
+            resp.setDepartmentName(user.getDepartment().getName());
+        }
+        return resp;
     }
 
-    // Inner helper for aggregating weighted scores per skill
     private static class SkillAggregator {
         private final Long skillId;
         private final String skillName;
@@ -242,12 +244,9 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
             s.setSkillName(skillName);
             s.setTotalWeight(totalWeight);
             s.setTaskCount(taskCount);
-            if (totalWeight > 0) {
-                s.setAverageScore(weightedScoreSum.divide(
-                        BigDecimal.valueOf(totalWeight), 2, RoundingMode.HALF_UP));
-            } else {
-                s.setAverageScore(BigDecimal.ZERO);
-            }
+            s.setAverageScore(totalWeight > 0
+                    ? weightedScoreSum.divide(BigDecimal.valueOf(totalWeight), 2, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO);
             return s;
         }
     }

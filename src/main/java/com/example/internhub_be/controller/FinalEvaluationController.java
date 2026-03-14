@@ -1,5 +1,6 @@
 package com.example.internhub_be.controller;
 
+import com.example.internhub_be.payload.UserResponse;
 import com.example.internhub_be.payload.request.FinalEvaluationRequest;
 import com.example.internhub_be.payload.response.FinalEvaluationResponse;
 import com.example.internhub_be.service.FinalEvaluationService;
@@ -12,20 +13,31 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/api/mentor/evaluations")
+@RequestMapping("/api/mentor")
 @RequiredArgsConstructor
 public class FinalEvaluationController {
 
     private final FinalEvaluationService evaluationService;
 
     /**
-     * GET /api/mentor/evaluations/intern/{internId}
-     *
-     * Mentor xem bảng điểm tổng hợp từ các Micro-tasks của intern,
-     * kèm theo trạng thái đánh giá nếu đã có.
+     * GET /api/mentor/interns
+     * Trả về danh sách intern mà mentor hiện tại đang phụ trách
+     * (dựa vào internship_profiles.mentor_id)
      */
-    @GetMapping("/intern/{internId}")
+    @GetMapping("/interns")
+    @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN', 'MANAGER')")
+    public ResponseEntity<List<UserResponse>> getMyInterns() {
+        return ResponseEntity.ok(evaluationService.getMyInterns(getCurrentUserEmail()));
+    }
+
+    /**
+     * GET /api/mentor/evaluations/intern/{internId}
+     * Mentor xem bảng điểm tổng hợp + trạng thái đánh giá của intern
+     */
+    @GetMapping("/evaluations/intern/{internId}")
     @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN', 'MANAGER')")
     public ResponseEntity<FinalEvaluationResponse> getEvaluationSummary(
             @PathVariable Long internId) {
@@ -34,35 +46,25 @@ public class FinalEvaluationController {
 
     /**
      * POST /api/mentor/evaluations
-     *
-     * Tạo mới hoặc cập nhật draft đánh giá.
-     * Có thể gọi nhiều lần để lưu nháp trước khi gửi.
-     *
-     * Body: { "internId": 5, "overallComment": "..." }
+     * Tạo mới hoặc cập nhật draft đánh giá
      */
-    @PostMapping
+    @PostMapping("/evaluations")
     @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN')")
     public ResponseEntity<FinalEvaluationResponse> saveOrUpdateDraft(
             @Valid @RequestBody FinalEvaluationRequest request) {
-        String mentorEmail = getCurrentUserEmail();
-        FinalEvaluationResponse response = evaluationService.saveOrUpdateDraft(request, mentorEmail);
+        FinalEvaluationResponse response = evaluationService.saveOrUpdateDraft(request, getCurrentUserEmail());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**
      * POST /api/mentor/evaluations/{id}/submit
-     *
-     * Gửi phê duyệt — hành động không thể hoàn tác.
-     * Sau khi submit:
-     *   - status → SUBMITTED
-     *   - is_locked → true  (ngăn submit/review thêm task mới)
+     * Gửi phê duyệt — không thể hoàn tác
      */
-    @PostMapping("/{id}/submit")
+    @PostMapping("/evaluations/{id}/submit")
     @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN')")
     public ResponseEntity<FinalEvaluationResponse> submitEvaluation(
             @PathVariable Long id) {
-        String mentorEmail = getCurrentUserEmail();
-        FinalEvaluationResponse response = evaluationService.submitEvaluation(id, mentorEmail);
+        FinalEvaluationResponse response = evaluationService.submitEvaluation(id, getCurrentUserEmail());
         return ResponseEntity.ok(response);
     }
 
