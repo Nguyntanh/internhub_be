@@ -3,9 +3,12 @@ package com.example.internhub_be.repository;
 import com.example.internhub_be.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+    boolean existsByEmail(String email);
     Optional<User> findByEmail(String email); // Changed from findByUsername
     Optional<User> findByActivationToken(String activationToken);
 
@@ -16,4 +19,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
            "LEFT JOIN FETCH ip.mentor mentor " +
            "WHERE u.email = :email")
     Optional<User> findUserWithProfileByEmail(String email);
+
 }

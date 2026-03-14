@@ -1,5 +1,6 @@
 package com.example.internhub_be.controller;
 
+import com.example.internhub_be.domain.User;
 import com.example.internhub_be.payload.ChangePasswordRequest;
 import com.example.internhub_be.payload.NewAvatarUrlResponse;
 import com.example.internhub_be.payload.UserProfileResponse;
@@ -12,6 +13,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map; // Added import for Map
 
 @RestController
@@ -52,5 +54,17 @@ public class UserController {
 
         NewAvatarUrlResponse newAvatarUrlResponse = userService.updateAvatar(currentPrincipalName, file);
         return ResponseEntity.ok(newAvatarUrlResponse);
+    }
+
+    @GetMapping("/mentors")
+
+    public ResponseEntity<List<User>> getMentors() {
+        return ResponseEntity.ok(userService.getUsersByRole("MENTOR"));
+
+    }
+    @GetMapping("/managers")
+
+    public ResponseEntity<List<User>> getManagers() {
+        return ResponseEntity.ok(userService.getUsersByRole("MANAGER"));
     }
 }
