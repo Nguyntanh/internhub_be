@@ -29,12 +29,4 @@ public class WebMvcConfig implements WebMvcConfigurer {
         //         .addResourceLocations(basePath);
     }
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**") // Apply to all endpoints
-                .allowedOrigins("http://localhost:4200") // Allow frontend origin
-                .allowedMethods("*") // Allow all HTTP methods (GET, POST, PUT, PATCH, DELETE, OPTIONS)
-                .allowedHeaders("*") // Allow all headers
-                .allowCredentials(true); // Allow sending credentials (e.g., cookies, authorization headers)
-    }
 }
