@@ -8,15 +8,14 @@ import java.util.List;
 
 public interface FinalEvaluationService {
 
-    /** Lấy danh sách intern mà mentor đang phụ trách */
     List<UserResponse> getMyInterns(String mentorEmail);
 
-    /** Lấy bảng điểm tổng hợp + trạng thái đánh giá hiện tại của một intern */
     FinalEvaluationResponse getEvaluationByIntern(Long internId);
 
-    /** Tạo mới hoặc cập nhật draft đánh giá (chưa gửi) */
     FinalEvaluationResponse saveOrUpdateDraft(FinalEvaluationRequest request, String mentorEmail);
 
-    /** Gửi phê duyệt — khóa tất cả micro_tasks của intern đó */
     FinalEvaluationResponse submitEvaluation(Long evaluationId, String mentorEmail);
+
+    /** Mở khóa đánh giá để chỉnh sửa lại (reset về DRAFT, isLocked=false) */
+    FinalEvaluationResponse resetEvaluation(Long evaluationId, String mentorEmail);
 }

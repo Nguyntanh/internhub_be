@@ -22,21 +22,12 @@ public class FinalEvaluationController {
 
     private final FinalEvaluationService evaluationService;
 
-    /**
-     * GET /api/mentor/interns
-     * Trả về danh sách intern mà mentor hiện tại đang phụ trách
-     * (dựa vào internship_profiles.mentor_id)
-     */
     @GetMapping("/interns")
     @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN', 'MANAGER')")
     public ResponseEntity<List<UserResponse>> getMyInterns() {
         return ResponseEntity.ok(evaluationService.getMyInterns(getCurrentUserEmail()));
     }
 
-    /**
-     * GET /api/mentor/evaluations/intern/{internId}
-     * Mentor xem bảng điểm tổng hợp + trạng thái đánh giá của intern
-     */
     @GetMapping("/evaluations/intern/{internId}")
     @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN', 'MANAGER')")
     public ResponseEntity<FinalEvaluationResponse> getEvaluationSummary(
@@ -44,32 +35,31 @@ public class FinalEvaluationController {
         return ResponseEntity.ok(evaluationService.getEvaluationByIntern(internId));
     }
 
-    /**
-     * POST /api/mentor/evaluations
-     * Tạo mới hoặc cập nhật draft đánh giá
-     */
     @PostMapping("/evaluations")
     @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN')")
     public ResponseEntity<FinalEvaluationResponse> saveOrUpdateDraft(
             @Valid @RequestBody FinalEvaluationRequest request) {
-        FinalEvaluationResponse response = evaluationService.saveOrUpdateDraft(request, getCurrentUserEmail());
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(evaluationService.saveOrUpdateDraft(request, getCurrentUserEmail()));
     }
 
-    /**
-     * POST /api/mentor/evaluations/{id}/submit
-     * Gửi phê duyệt — không thể hoàn tác
-     */
     @PostMapping("/evaluations/{id}/submit")
     @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN')")
     public ResponseEntity<FinalEvaluationResponse> submitEvaluation(
             @PathVariable Long id) {
-        FinalEvaluationResponse response = evaluationService.submitEvaluation(id, getCurrentUserEmail());
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(evaluationService.submitEvaluation(id, getCurrentUserEmail()));
+    }
+
+    /** POST /api/mentor/evaluations/{id}/reset — mở khóa để đánh giá lại */
+    @PostMapping("/evaluations/{id}/reset")
+    @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN')")
+    public ResponseEntity<FinalEvaluationResponse> resetEvaluation(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(evaluationService.resetEvaluation(id, getCurrentUserEmail()));
     }
 
     private String getCurrentUserEmail() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication.getName();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth.getName();
     }
 }

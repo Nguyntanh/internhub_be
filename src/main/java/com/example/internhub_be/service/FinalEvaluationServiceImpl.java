@@ -1,7 +1,6 @@
 package com.example.internhub_be.service;
 
 import com.example.internhub_be.domain.FinalEvaluation;
-import com.example.internhub_be.domain.InternshipProfile;
 import com.example.internhub_be.domain.MicroTask;
 import com.example.internhub_be.domain.TaskSkillRating;
 import com.example.internhub_be.domain.User;
@@ -102,14 +101,19 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
         FinalEvaluation evaluation = evaluationRepository.findByInternId(request.getInternId())
                 .orElse(new FinalEvaluation());
 
-        if (evaluation.getId() != null && evaluation.getStatus() == FinalEvaluation.EvaluationStatus.SUBMITTED) {
-            throw new IllegalStateException("Đánh giá đã được gửi phê duyệt, không thể chỉnh sửa.");
+        // FIXED: Chỉ chặn khi isLocked=true.
+        // Sau khi reset, isLocked=false nên cho phép lưu draft dù status cũ là SUBMITTED.
+        if (evaluation.getId() != null && Boolean.TRUE.equals(evaluation.getIsLocked())) {
+            throw new IllegalStateException("Đánh giá đang bị khóa. Hãy dùng 'Đánh giá lại' để mở khóa trước.");
         }
 
         evaluation.setIntern(intern);
         evaluation.setMentor(mentor);
         evaluation.setOverallComment(request.getOverallComment());
         evaluation.setStatus(FinalEvaluation.EvaluationStatus.DRAFT);
+        if (evaluation.getId() == null) {
+            evaluation.setIsLocked(false);
+        }
 
         FinalEvaluation saved = evaluationRepository.save(evaluation);
         return mapToResponseFull(saved);
@@ -130,8 +134,9 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
             throw new SecurityException("Bạn không có quyền gửi phê duyệt đánh giá này.");
         }
 
-        if (evaluation.getStatus() == FinalEvaluation.EvaluationStatus.SUBMITTED) {
-            throw new IllegalStateException("Đánh giá này đã được gửi trước đó.");
+        // FIXED: kiểm tra isLocked thay vì status để tránh conflict với reset flow
+        if (Boolean.TRUE.equals(evaluation.getIsLocked())) {
+            throw new IllegalStateException("Đánh giá này đã được khóa. Dùng 'Đánh giá lại' để mở khóa trước.");
         }
 
         if (evaluation.getOverallComment() == null || evaluation.getOverallComment().isBlank()) {
@@ -141,6 +146,29 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
         evaluation.setStatus(FinalEvaluation.EvaluationStatus.SUBMITTED);
         evaluation.setIsLocked(true);
         evaluation.setSubmittedAt(LocalDateTime.now());
+
+        FinalEvaluation saved = evaluationRepository.save(evaluation);
+        return mapToResponseFull(saved);
+    }
+
+    // ─── RESET (Đánh giá lại) ─────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public FinalEvaluationResponse resetEvaluation(Long evaluationId, String mentorEmail) {
+        User mentor = userRepository.findByEmail(mentorEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("Mentor not found: " + mentorEmail));
+
+        FinalEvaluation evaluation = evaluationRepository.findById(evaluationId)
+                .orElseThrow(() -> new ResourceNotFoundException("FinalEvaluation", "id", evaluationId));
+
+        if (!evaluation.getMentor().getId().equals(mentor.getId())) {
+            throw new SecurityException("Bạn không có quyền mở khóa đánh giá này.");
+        }
+
+        evaluation.setStatus(FinalEvaluation.EvaluationStatus.DRAFT);
+        evaluation.setIsLocked(false);
+        evaluation.setSubmittedAt(null);
 
         FinalEvaluation saved = evaluationRepository.save(evaluation);
         return mapToResponseFull(saved);
