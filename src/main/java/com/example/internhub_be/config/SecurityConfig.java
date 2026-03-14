@@ -55,6 +55,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/login").permitAll() // Allow unauthenticated access to login endpoint
                 .requestMatchers("/api/auth/activate/**").permitAll() // Allow unauthenticated access to activate endpoint
+                .requestMatchers("/assets/avatars/**").permitAll() // Allow unauthenticated access to avatar static resources
                 .requestMatchers("/api/auth/**").authenticated() // All other auth endpoints require authentication
                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // Require ADMIN role for admin endpoints
                 .anyRequest().authenticated() // Require authentication for all other requests
