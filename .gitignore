@@ -48,6 +48,7 @@ ehthumbs.db
 # Không push file chứa mật khẩu DB thực tế
 src/main/resources/application-local.properties
 src/main/resources/application-dev.properties
+src/main/resources/application.properties
 
 ### Backup files ###
 *.bak
