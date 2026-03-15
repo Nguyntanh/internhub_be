@@ -2,6 +2,7 @@ package com.example.internhub_be.service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,10 +16,12 @@ import com.example.internhub_be.domain.TaskSkillRatingId;
 import com.example.internhub_be.domain.User;
 import com.example.internhub_be.exception.ResourceNotFoundException;
 import com.example.internhub_be.payload.request.TaskAssignmentRequest;
+import com.example.internhub_be.payload.response.TaskResponse;
 import com.example.internhub_be.repository.MicroTaskRepository;
 import com.example.internhub_be.repository.SkillRepository;
 import com.example.internhub_be.repository.TaskSkillRatingRepository;
 import com.example.internhub_be.repository.UserRepository;
+
 
 import lombok.RequiredArgsConstructor;
 
@@ -78,7 +81,21 @@ public class TaskServiceImpl implements TaskService {
         return userRepository.findById(internId)
             .map(User::getInternshipProfile)
             .map(InternshipProfile::getPosition)
-            .map((InternshipPosition pos) -> skillRepository.findByPosition(pos)) 
+            .map((InternshipPosition pos) -> skillRepository.findByInternshipPositions(pos))
+            .map(skillsSet -> skillsSet.stream().collect(Collectors.toList())) // Convert Set to List
             .orElse(Collections.emptyList());
+    }
+
+    @Override
+    public List<TaskResponse> getTasksByMentor(Long mentorId) {
+        List<MicroTask> tasks = taskRepository.findByMentorId(mentorId);
+        
+        return tasks.stream().map(task -> new TaskResponse(
+            task.getId(),
+            task.getTitle(),
+            task.getStatus().name(),
+            task.getIntern().getName(), // Chạm vào đây để trigger Lazy Load
+            task.getDeadline()
+        )).collect(Collectors.toList());
     }
 }

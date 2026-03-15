@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +17,7 @@ import java.util.List;
 @AllArgsConstructor
 @Entity
 @Table(name = "micro_tasks")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class MicroTask {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,10 +39,12 @@ public class MicroTask {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mentor_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User mentor;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "intern_id") // Nếu giao cho nhóm, chuyển cái này thành Set<User> assignees
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User intern;
 
     // QUAN TRỌNG: Kết nối với các kỹ năng đã giao

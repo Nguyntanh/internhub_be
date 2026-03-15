@@ -15,6 +15,7 @@ import com.example.internhub_be.domain.MicroTask;
 import com.example.internhub_be.domain.Skill;
 import com.example.internhub_be.domain.User;
 import com.example.internhub_be.payload.request.TaskAssignmentRequest;
+import com.example.internhub_be.payload.response.TaskResponse;
 import com.example.internhub_be.service.SecurityService;
 import com.example.internhub_be.service.TaskService;
 
@@ -28,6 +29,18 @@ public class TaskController {
 
     private final TaskService taskService;
     private final SecurityService securityService; // Để lấy User hiện tại
+
+    @GetMapping("/my-created-tasks")
+    @PreAuthorize("hasRole('MENTOR')")
+    public ResponseEntity<List<TaskResponse>> getMyCreatedTasks() {
+        // Lấy thông tin Mentor đang đăng nhập từ hệ thống
+        User currentMentor = securityService.getCurrentUser();
+        
+        // Lấy danh sách task theo ID của Mentor đó
+        List<TaskResponse> tasks = taskService.getTasksByMentor(currentMentor.getId());
+        
+        return ResponseEntity.ok(tasks);
+    }
 
     @PostMapping("/assign")
     @PreAuthorize("hasRole('MENTOR')")

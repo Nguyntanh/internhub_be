@@ -10,11 +10,13 @@ import com.example.internhub_be.exception.ResourceNotFoundException;
 import com.example.internhub_be.repository.UserRepository;
 
 import java.util.Collection;
+import lombok.RequiredArgsConstructor;
 
 @Service("securityService") // Alias for @PreAuthorize
+@RequiredArgsConstructor
 public class SecurityService {
 
-    private final UserRepository userRepository = null;
+    private final UserRepository userRepository;
 
     public boolean hasPermission(String funcCode, String action) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

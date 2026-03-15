@@ -4,6 +4,7 @@ import com.example.internhub_be.domain.MicroTask;
 import com.example.internhub_be.domain.Skill;
 import com.example.internhub_be.domain.User;
 import com.example.internhub_be.payload.request.TaskAssignmentRequest;
+import com.example.internhub_be.payload.response.TaskResponse;
 
 import java.util.List;
 
@@ -11,4 +12,5 @@ import java.util.List;
 public interface TaskService {
     MicroTask createAndAssignTask(TaskAssignmentRequest request, User mentor);
     List<Skill> getSuggestedSkills(Long internId); // Tính năng gợi ý Tags
+    List<TaskResponse> getTasksByMentor(Long mentorId);
 }
