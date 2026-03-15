@@ -27,11 +27,7 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -213,5 +209,15 @@ public class UserServiceImpl implements UserService {
         auditLogService.logAction("UPDATE_AVATAR", user, details);
 
         return new NewAvatarUrlResponse(newAvatarUrl);
+    }
+
+    @Override
+    public List<User> getUsersByRole(String roleName) {
+
+        return userRepository.findAll()
+                .stream()
+                .filter(u -> u.getRole() != null &&
+                        roleName.equalsIgnoreCase(u.getRole().getName()))
+                .toList();
     }
 }
