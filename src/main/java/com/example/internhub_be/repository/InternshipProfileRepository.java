@@ -34,4 +34,8 @@
     WHERE p.id = :id
 """)
         Optional<InternshipProfile> findByIdWithRelations(@Param("id") Long id);
+        List<InternshipProfile> findByMentorId(Long mentorId);
+
+    // Lấy theo manager
+    List<InternshipProfile> findByManagerId(Long managerId);
     }

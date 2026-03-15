@@ -1,9 +1,17 @@
 package com.example.internhub_be.config;
 
+import com.example.internhub_be.security.JwtAuthenticationEntryPoint;
+import com.example.internhub_be.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -11,6 +19,8 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.*;
+
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfiguration;
@@ -38,7 +48,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    public PasswordEncoder passwordEncoder(){
         return new BCryptPasswordEncoder();
     }
 
@@ -50,6 +60,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
@@ -65,29 +76,28 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/activate/**").permitAll()
 
-                        // Static assets
-                        .requestMatchers("/assets/avatars/**").permitAll()
-
-                        // Department & Position GET public
+                        // PUBLIC DATA
                         .requestMatchers(HttpMethod.GET, "/api/departments").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/departments/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/positions").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/positions/**").permitAll()
+                        // Static assets
+                        .requestMatchers("/assets/avatars/**").permitAll()
 
-                        // Admin endpoints
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                    // ── Admin endpoints ───────────────────────────────────────
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated() // Require authentication for all other requests
+            );
 
-                        // Tất cả còn lại yêu cầu đăng nhập
-                        .anyRequest().authenticated()
-                );
-
-        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(jwtAuthenticationFilter,
+                UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(){
+
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:4200"));
         // FIX: Thêm PATCH vào danh sách — thiếu method này gây lỗi CORS preflight
@@ -104,7 +114,7 @@ public class SecurityConfig {
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration("/**", configuration); // Apply this CORS configuration to all paths
         return source;
     }
 }
