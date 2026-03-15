@@ -14,9 +14,10 @@ import java.util.List;
 public class DepartmentRequest {
 
     @NotBlank(message = "Tên phòng ban không được để trống")
-    @Size(max = 100)
+    @Size(max = 100, message = "Tên phòng ban không được quá 100 ký tự")
     private String name;
 
+    @Size(max = 500, message = "Mô tả không được quá 500 ký tự")
     private String description;
 
 
