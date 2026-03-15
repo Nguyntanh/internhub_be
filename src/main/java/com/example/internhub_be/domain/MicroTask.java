@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -21,22 +23,15 @@ public class MicroTask {
     @Column(nullable = false)
     private String title;
 
-    @Lob
-    @Column(name = "description")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     private LocalDateTime deadline;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('Todo', 'In_Progress', 'Submitted', 'Reviewed', 'Rejected') DEFAULT 'Todo'")
     private MicroTaskStatus status = MicroTaskStatus.Todo;
 
-    @Lob
-    @Column(name = "submission_link")
     private String submissionLink;
-
-    @Lob
-    @Column(name = "submission_note")
     private String submissionNote;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -44,15 +39,16 @@ public class MicroTask {
     private User mentor;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "intern_id")
+    @JoinColumn(name = "intern_id") // Nếu giao cho nhóm, chuyển cái này thành Set<User> assignees
     private User intern;
+
+    // QUAN TRỌNG: Kết nối với các kỹ năng đã giao
+    @OneToMany(mappedBy = "microTask", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<TaskSkillRating> skillRatings = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // Internal Enum for MicroTask Status
-    public enum MicroTaskStatus {
-        Todo, In_Progress, Submitted, Reviewed, Rejected
-    }
+    public enum MicroTaskStatus { Todo, In_Progress, Submitted, Reviewed, Rejected }
 }

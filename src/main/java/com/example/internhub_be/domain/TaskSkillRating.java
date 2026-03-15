@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Getter
 @Setter
@@ -18,23 +19,22 @@ public class TaskSkillRating {
     @EmbeddedId
     private TaskSkillRatingId id;
 
+    @JsonIgnore // NGẮT VÒNG LẶP: Task -> Rating -> Task (Vòng lặp tử thần ở đây)
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("taskId")
     @JoinColumn(name = "task_id")
     private MicroTask microTask;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER) // Load nhanh kỹ năng khi xem task
     @MapsId("skillId")
     @JoinColumn(name = "skill_id")
     private Skill skill;
 
-    @Column(name = "weight")
     private Integer weight = 1;
 
     @Column(name = "rating_score", precision = 3, scale = 2)
     private BigDecimal ratingScore;
 
-    @Lob
-    @Column(name = "review_comment")
+    @Column(columnDefinition = "TEXT")
     private String reviewComment;
 }

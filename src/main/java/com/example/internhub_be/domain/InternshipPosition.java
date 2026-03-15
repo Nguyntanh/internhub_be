@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Data
 @NoArgsConstructor
@@ -18,11 +19,14 @@ public class InternshipPosition {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Lob
-    @Column(name = "description")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     private Department department;
+    
+    // Gợi ý: Bạn có thể thêm @ManyToMany với Skill ở đây nếu muốn Admin cấu hình sẵn 
+    // các tag mặc định cho từng vị trí (Backend cần tag Java, SQL...)
 }
