@@ -1,14 +1,17 @@
 package com.example.internhub_be.service;
 
+import com.example.internhub_be.domain.InternshipMilestone;
 import com.example.internhub_be.domain.InternshipProfile;
 import com.example.internhub_be.domain.User;
 import com.example.internhub_be.exception.InvalidFileException;
 import com.example.internhub_be.exception.ResourceNotFoundException;
-import com.example.internhub_be.payload.ChangePasswordRequest;
-import com.example.internhub_be.payload.NewAvatarUrlResponse;
-import com.example.internhub_be.payload.UserProfileResponse;
+import com.example.internhub_be.payload.*;
+import com.example.internhub_be.repository.InternshipMilestoneRepository;
+import com.example.internhub_be.payload.response.MilestoneResponse;
 import com.example.internhub_be.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
@@ -19,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,11 +29,8 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -41,23 +40,26 @@ public class UserServiceImpl implements UserService {
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
     private final Path uploadPath;
+    private final InternshipMilestoneRepository milestoneRepository;
 
-    private static final String DEFAULT_AVATAR = "default_avatar.png"; // Placeholder for default avatar
+    private static final String DEFAULT_AVATAR = "default_avatar.png";
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     private static final String[] ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"};
 
-
+    @Autowired
     public UserServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             AuditLogService auditLogService,
             ObjectMapper objectMapper,
+            InternshipMilestoneRepository milestoneRepository,
             @Value("${app.upload.dir:uploads}") String uploadDir
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
         this.objectMapper = objectMapper;
+        this.milestoneRepository = milestoneRepository;
         this.uploadPath = Paths.get(uploadDir, "avatars").toAbsolutePath().normalize();
 
         try {
@@ -78,11 +80,8 @@ public class UserServiceImpl implements UserService {
         response.setEmail(user.getEmail());
         response.setPhone(user.getPhone());
         response.setAvatar(user.getAvatar());
-
-        // Set department name from user's department
         response.setDepartmentName(user.getDepartment() != null ? user.getDepartment().getName() : null);
 
-        // Handle internship profile if it exists
         InternshipProfile ip = user.getInternshipProfile();
         if (ip != null) {
             response.setMajor(ip.getMajor());
@@ -93,36 +92,70 @@ public class UserServiceImpl implements UserService {
             response.setEndDate(ip.getEndDate());
             response.setMentorName(ip.getMentor() != null ? ip.getMentor().getName() : null);
 
-            // Calculate daysRemaining
+            // 1. Tính toán ngày thực tập còn lại
             if (ip.getEndDate() != null) {
                 LocalDate today = LocalDate.now();
-                if (ip.getEndDate().isBefore(today)) {
-                    response.setDaysRemaining(0L); // Internship ended
-                } else {
-                    response.setDaysRemaining(ChronoUnit.DAYS.between(today, ip.getEndDate()));
-                }
+                long remaining = ChronoUnit.DAYS.between(today, ip.getEndDate());
+                response.setDaysRemaining(Math.max(0L, remaining));
+            }
+
+            // 2. Tính toán Roadmap Milestones dựa trên Position
+            if (ip.getPosition() != null && ip.getStartDate() != null) {
+                List<InternshipMilestone> milestones = milestoneRepository
+                        .findByPositionIdOrderByOrderIndexAsc(ip.getPosition().getId());
+                
+                response.setRoadmap(calculateRoadmap(milestones, ip.getStartDate()));
             } else {
-                response.setDaysRemaining(null);
+                response.setRoadmap(new ArrayList<>());
             }
         } else {
-            // If no internship profile, explicitly set fields to null and daysRemaining to null
-            response.setMajor(null);
-            response.setUniversityName(null);
-            response.setPositionName(null);
-            response.setStatus(null);
-            response.setStartDate(null);
-            response.setEndDate(null);
-            response.setMentorName(null);
+            // Trường hợp không có profile
             response.setDaysRemaining(null);
+            response.setRoadmap(new ArrayList<>());
         }
 
         return response;
     }
 
+    /**
+     * Logic tính toán trạng thái động cho từng Milestone
+     */
+    private List<MilestoneResponse> calculateRoadmap(List<InternshipMilestone> milestones, LocalDate startDate) {
+        LocalDate today = LocalDate.now();
+        long daysSinceStart = ChronoUnit.DAYS.between(startDate, today);
+        
+        // Sử dụng mảng 1 phần tử để có thể thay đổi giá trị bên trong lambda (effectively final)
+        int[] accumulatedDays = {0};
+
+        return milestones.stream().map(m -> {
+            int duration = (m.getDurationDays() != null) ? m.getDurationDays() : 0;
+            int milestoneEndDay = accumulatedDays[0] + duration;
+            
+            String status;
+            if (daysSinceStart >= milestoneEndDay) {
+                status = "COMPLETED";
+            } else if (daysSinceStart >= accumulatedDays[0]) {
+                status = "IN_PROGRESS"; // Đang nằm trong khoảng thời gian này
+            } else {
+                status = "TODO"; // Chưa tới
+            }
+
+            // Cộng dồn để milestone tiếp theo bắt đầu sau milestone này
+            accumulatedDays[0] += duration; 
+
+            return MilestoneResponse.builder()
+                    .id(m.getId())
+                    .title(m.getTitle())
+                    .description(m.getDescription())
+                    .orderIndex(m.getOrderIndex())
+                    .status(status)
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
     @Override
     @Transactional
     public void changePassword(String email, ChangePasswordRequest changePasswordRequest) {
-        // Retrieve the authenticated user's email from SecurityContextHolder
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentAuthenticatedUserEmail = authentication.getName();
 
@@ -133,32 +166,26 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
-        // So khớp mật khẩu cũ
         if (!passwordEncoder.matches(changePasswordRequest.getOldPassword(), user.getPassword())) {
             throw new BadCredentialsException("Incorrect old password.");
         }
 
-        // Cập nhật mật khẩu mới
         user.setPassword(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
         userRepository.save(user);
 
-        // Ghi Nhật ký Hệ thống (Audit Log)
         Map<String, Object> details = new HashMap<>();
-        details.put("timestamp", LocalDateTime.now().toString()); // Storing as String for consistent JSON representation
-
-        // Call logAction with the correct parameters
+        details.put("timestamp", LocalDateTime.now().toString());
         auditLogService.logAction("CHANGE_PASSWORD", user, details);
     }
 
     @Override
     @Transactional
     public NewAvatarUrlResponse updateAvatar(String email, MultipartFile file) {
-        // Validate file
         if (file.isEmpty()) {
             throw new InvalidFileException("Cannot upload empty file.");
         }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new InvalidFileException("File size exceeds the limit of " + MAX_FILE_SIZE / (1024 * 1024) + "MB");
+            throw new InvalidFileException("File size exceeds the limit of 5MB");
         }
 
         String originalFilename = file.getOriginalFilename();
@@ -168,29 +195,25 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new InvalidFileException("Could not determine file extension."));
 
         if (!Arrays.asList(ALLOWED_EXTENSIONS).contains(fileExtension)) {
-            throw new InvalidFileException("Only " + String.join(", ", ALLOWED_EXTENSIONS) + " files are allowed.");
+            throw new InvalidFileException("Only jpg, jpeg, png files are allowed.");
         }
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
-        // Delete old avatar if it exists and is not the default
+        // Xóa avatar cũ
         String oldAvatarUrl = user.getAvatar();
         if (oldAvatarUrl != null && !oldAvatarUrl.contains(DEFAULT_AVATAR)) {
             try {
-                // Assuming avatar URLs are stored as /assets/avatars/filename.ext
                 String oldFilename = oldAvatarUrl.substring(oldAvatarUrl.lastIndexOf("/") + 1);
                 Path oldFilePath = this.uploadPath.resolve(oldFilename).normalize();
-                if (Files.exists(oldFilePath)) {
-                    Files.delete(oldFilePath);
-                }
+                Files.deleteIfExists(oldFilePath);
             } catch (IOException e) {
-                System.err.println("Could not delete old avatar file: " + e.getMessage());
-                // Log the error but don't prevent new avatar upload
+                // Log error but continue
             }
         }
 
-        // Generate unique filename
+        // Lưu avatar mới
         String newFilename = "avatar_" + user.getId() + "_" + System.currentTimeMillis() + "." + fileExtension;
         Path targetLocation = this.uploadPath.resolve(newFilename);
 
@@ -200,16 +223,14 @@ public class UserServiceImpl implements UserService {
             throw new InvalidFileException("Could not store file " + newFilename, e);
         }
 
-        // Update user's avatar URL in database
         String newAvatarUrl = "/assets/avatars/" + newFilename;
         user.setAvatar(newAvatarUrl);
         userRepository.save(user);
 
-        // Audit Log
+        // Ghi log
         Map<String, Object> details = new HashMap<>();
         details.put("timestamp", LocalDateTime.now().toString());
         details.put("newAvatarUrl", newAvatarUrl);
-        details.put("oldAvatarUrl", oldAvatarUrl);
         auditLogService.logAction("UPDATE_AVATAR", user, details);
 
         return new NewAvatarUrlResponse(newAvatarUrl);
