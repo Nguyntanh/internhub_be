@@ -87,15 +87,28 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<TaskResponse> getTasksByMentor(Long mentorId) {
         List<MicroTask> tasks = taskRepository.findByMentorId(mentorId);
         
-        return tasks.stream().map(task -> new TaskResponse(
-            task.getId(),
-            task.getTitle(),
-            task.getStatus().name(),
-            task.getIntern().getName(), // Chạm vào đây để trigger Lazy Load
-            task.getDeadline()
-        )).collect(Collectors.toList());
+        return tasks.stream().map(task -> {
+            // Chuyển đổi List<TaskSkillRating> sang List<SkillWeightInfo>
+            List<TaskResponse.SkillWeightResponse> skillInfos = task.getSkillRatings().stream()
+                .map(rating -> new TaskResponse.SkillWeightResponse(
+                    rating.getSkill().getName(),
+                    rating.getWeight()
+                ))
+                .collect(Collectors.toList());
+
+            // Trả về TaskResponse với đầy đủ tham số qua Constructor
+            return new TaskResponse(
+                task.getId(),
+                task.getTitle(),
+                task.getStatus().name(),
+                task.getIntern() != null ? task.getIntern().getName() : "N/A",
+                task.getDeadline(),
+                skillInfos
+            );
+        }).collect(Collectors.toList());
     }
 }

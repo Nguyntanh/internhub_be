@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 
 @Data
@@ -14,5 +15,12 @@ public class TaskResponse {
     private String status;
     private String internName;
     private LocalDateTime deadline;
-    // Chỉ lấy những gì Mentor cần thấy
+    private List<SkillWeightResponse> skills;
+
+    @Data
+    @AllArgsConstructor
+    public static class SkillWeightResponse {
+        private String skillName;
+        private Integer weight; // Trọng số của kỹ năng này trong task
+    }
 }
