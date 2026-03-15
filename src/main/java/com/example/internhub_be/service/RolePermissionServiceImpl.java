@@ -11,6 +11,7 @@ import com.example.internhub_be.repository.FunctionRepository;
 import com.example.internhub_be.repository.RolePermissionRepository;
 import com.example.internhub_be.repository.RoleRepository;
 import org.springframework.stereotype.Service;
+import com.example.internhub_be.payload.response.RoleResponse;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -85,6 +86,13 @@ public class RolePermissionServiceImpl implements RolePermissionService {
         List<RolePermission> allRolePermissions = rolePermissionRepository.findAll();
         return allRolePermissions.stream()
                 .map(this::mapRolePermissionToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<com.example.internhub_be.payload.response.RoleResponse> getAllRoles() {
+        return roleRepository.findAll().stream()
+                .map(role -> new com.example.internhub_be.payload.response.RoleResponse(role.getId(), role.getName()))
                 .collect(Collectors.toList());
     }
 
