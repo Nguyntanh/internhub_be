@@ -76,6 +76,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/departments/**").permitAll() // Allow unauthenticated access to get specific department
                 .requestMatchers(HttpMethod.GET, "/api/positions").permitAll() // Allow unauthenticated access to get positions
                 .requestMatchers(HttpMethod.GET, "/api/positions/**").permitAll() // Allow unauthenticated access to get specific position
+                .requestMatchers("/api/admin/roles").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // Require ADMIN role for admin endpoints
                 .requestMatchers("/api/auth/**").authenticated() // All other auth endpoints require authentication
                 .anyRequest().authenticated() // Require authentication for all other requests

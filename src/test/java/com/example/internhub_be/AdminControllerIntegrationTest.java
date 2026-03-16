@@ -124,33 +124,13 @@ class AdminControllerIntegrationTest {
     }
 
     @Test
-    void testGetAllRoles_Success() throws Exception {
-        String adminToken = obtainAdminToken();
-
+    void testGetAllRoles_Success_PublicAccess() throws Exception {
+        // Không cần token, bất kỳ ai cũng có thể truy cập
         mockMvc.perform(get("/api/admin/roles")
-                        .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[0].id").isNumber())
                 .andExpect(jsonPath("$[0].name").isString());
-    }
-
-    @Test
-    void testGetAllRoles_Unauthorized() throws Exception {
-        mockMvc.perform(get("/api/admin/roles")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void testGetAllRoles_Forbidden() throws Exception {
-        // Use the dynamically created non-admin user
-        String userToken = obtainUserToken(NON_ADMIN_EMAIL, NON_ADMIN_PASSWORD);
-
-        mockMvc.perform(get("/api/admin/roles")
-                        .header("Authorization", "Bearer " + userToken)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden());
     }
 }

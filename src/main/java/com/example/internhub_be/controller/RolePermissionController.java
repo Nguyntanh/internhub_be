@@ -22,7 +22,7 @@ public class RolePermissionController {
         this.rolePermissionService = rolePermissionService;
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    // @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/roles")
     public ResponseEntity<List<RoleResponse>> getAllRoles() {
         List<RoleResponse> roles = rolePermissionService.getAllRoles();
