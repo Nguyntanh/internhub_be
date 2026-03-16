@@ -4,6 +4,8 @@ import com.example.internhub_be.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email); // Changed from findByUsername
@@ -16,4 +18,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
            "LEFT JOIN FETCH ip.mentor mentor " +
            "WHERE u.email = :email")
     Optional<User> findUserWithProfileByEmail(String email);
+
+    Page<User> findByRoleId(Long roleId, Pageable pageable);
 }

@@ -2,7 +2,9 @@ package com.example.internhub_be.controller;
 
 import com.example.internhub_be.payload.ChangePasswordRequest;
 import com.example.internhub_be.payload.NewAvatarUrlResponse;
+import com.example.internhub_be.payload.PagedResponse;
 import com.example.internhub_be.payload.UserProfileResponse;
+import com.example.internhub_be.payload.UserResponse;
 import com.example.internhub_be.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,14 @@ public class UserController {
 
     public UserController(UserService userService) {
         this.userService = userService;
+    }
+
+    @GetMapping
+    public PagedResponse<UserResponse> getUsers(
+            @RequestParam(value = "roleId", required = false) Long roleId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
+        return userService.getAllUsers(roleId, page, size);
     }
 
     @GetMapping("/profile")
