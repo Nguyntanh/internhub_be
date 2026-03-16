@@ -1,9 +1,9 @@
 package com.example.internhub_be.controller;
 
-import com.example.internhub_be.domain.User;
 import com.example.internhub_be.payload.ChangePasswordRequest;
 import com.example.internhub_be.payload.NewAvatarUrlResponse;
 import com.example.internhub_be.payload.UserProfileResponse;
+import com.example.internhub_be.payload.UserResponse;
 import com.example.internhub_be.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map; // Added import for Map
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/user")
@@ -27,44 +27,62 @@ public class UserController {
     }
 
     @GetMapping("/profile")
-    @PreAuthorize("isAuthenticated()") // Ensure user is authenticated to access their profile
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserProfileResponse> getUserProfile() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentPrincipalName = authentication.getName(); // This will be the email
 
-        UserProfileResponse userProfile = userService.getUserProfile(currentPrincipalName);
-        return ResponseEntity.ok(userProfile);
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        String email = authentication.getName();
+
+        return ResponseEntity.ok(userService.getUserProfile(email));
     }
 
     @PostMapping("/change-password")
-    @PreAuthorize("isAuthenticated()") // Only authenticated users can change their password
-    public ResponseEntity<Map<String, String>> changePassword(@Valid @RequestBody ChangePasswordRequest changePasswordRequest) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentPrincipalName = authentication.getName(); // This will be the email
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
 
-        userService.changePassword(currentPrincipalName, changePasswordRequest);
-        return ResponseEntity.ok(Map.of("message", "Password changed successfully!"));
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        String email = authentication.getName();
+
+        userService.changePassword(email, request);
+
+        return ResponseEntity.ok(
+                Map.of("message", "Password changed successfully!")
+        );
     }
 
     @PatchMapping(value = "/profile/avatar", consumes = "multipart/form-data")
-    @PreAuthorize("isAuthenticated()") // Only authenticated users can upload their avatar
-    public ResponseEntity<NewAvatarUrlResponse> updateAvatar(@RequestParam("file") MultipartFile file) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentPrincipalName = authentication.getName(); // This will be the email
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<NewAvatarUrlResponse> updateAvatar(
+            @RequestParam("file") MultipartFile file) {
 
-        NewAvatarUrlResponse newAvatarUrlResponse = userService.updateAvatar(currentPrincipalName, file);
-        return ResponseEntity.ok(newAvatarUrlResponse);
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        String email = authentication.getName();
+
+        return ResponseEntity.ok(userService.updateAvatar(email, file));
     }
 
+    // ⭐ Mentors
     @GetMapping("/mentors")
-
-    public ResponseEntity<List<User>> getMentors() {
-        return ResponseEntity.ok(userService.getUsersByRole("MENTOR"));
-
+    public ResponseEntity<List<UserResponse>> getMentors() {
+        return ResponseEntity.ok(userService.getUsersByRoleResponse("MENTOR"));
     }
-    @GetMapping("/managers")
 
-    public ResponseEntity<List<User>> getManagers() {
-        return ResponseEntity.ok(userService.getUsersByRole("MANAGER"));
+    // ⭐ Managers
+    @GetMapping("/managers")
+    public ResponseEntity<List<UserResponse>> getManagers() {
+        return ResponseEntity.ok(userService.getUsersByRoleResponse("MANAGER"));
+    }
+
+    // ⭐ Interns
+    @GetMapping("/interns")
+    public ResponseEntity<List<UserResponse>> getInterns() {
+        return ResponseEntity.ok(userService.getUsersByRoleResponse("INTERN"));
     }
 }
