@@ -27,7 +27,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendActivationEmail(String to, String activationLink) {
+    public void sendActivationEmail(String to, String activationLink, String tempPassword) {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message);
 
@@ -38,6 +38,7 @@ public class EmailServiceImpl implements EmailService {
             String content = "Xin chào,<br><br>"
                            + "Cảm ơn bạn đã đăng ký Internhub. Vui lòng nhấp vào liên kết sau để kích hoạt tài khoản của bạn:<br>"
                            + "<a href=\"" + activationLink + "\">" + activationLink + "</a><br><br>"
+                           + "Mật khẩu tạm thời của bạn là: <strong>" + tempPassword + "</strong>. Vui lòng thay đổi mật khẩu sau khi đăng nhập.<br><br>"
                            + "Trân trọng,<br>"
                            + "Đội ngũ Internhub";
             helper.setText(content, true); // true indicates HTML content

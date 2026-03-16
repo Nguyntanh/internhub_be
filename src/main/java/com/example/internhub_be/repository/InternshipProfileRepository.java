@@ -10,22 +10,36 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface InternshipProfileRepository extends JpaRepository<InternshipProfile, Long> {
 
-    Page<InternshipProfile> findByStatus(InternshipStatus status, Pageable pageable);
+    @Query("""
+        SELECT p FROM InternshipProfile p
+        JOIN FETCH p.user u
+        LEFT JOIN FETCH u.department
+        LEFT JOIN FETCH p.university
+        LEFT JOIN FETCH p.position pos
+        LEFT JOIN FETCH pos.department
+        LEFT JOIN FETCH p.mentor
+        LEFT JOIN FETCH p.manager
+    """)
+    List<InternshipProfile> findAllWithRelations();
 
-    @Query("SELECT p FROM InternshipProfile p WHERE LOWER(p.user.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(p.user.email) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    Page<InternshipProfile> findByUserNameContainingIgnoreCase(@Param("keyword") String keyword, Pageable pageable);
+    @Query("""
+        SELECT p FROM InternshipProfile p
+        JOIN FETCH p.user u
+        LEFT JOIN FETCH u.department
+        LEFT JOIN FETCH p.university
+        LEFT JOIN FETCH p.position pos
+        LEFT JOIN FETCH pos.department
+        LEFT JOIN FETCH p.mentor
+        LEFT JOIN FETCH p.manager
+        WHERE p.id = :id
+    """)
+    Optional<InternshipProfile> findByIdWithRelations(@Param("id") Long id);
 
-    @Query("SELECT p FROM InternshipProfile p WHERE (LOWER(p.user.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(p.user.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND p.status = :status")
-    Page<InternshipProfile> findByUserNameContainingIgnoreCaseAndStatus(@Param("keyword") String keyword, @Param("status") InternshipStatus status, Pageable pageable);
+    List<InternshipProfile> findByMentorId(Long mentorId);
 
-    List<InternshipProfile> findByMentor(User mentor);
-
-    List<InternshipProfile> findByManager(User manager);
-
-    long countByMentor(User mentor);
-
-    long countByManager(User manager);
+    List<InternshipProfile> findByManagerId(Long managerId);
 }
