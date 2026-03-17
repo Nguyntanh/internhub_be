@@ -7,6 +7,7 @@ import com.example.internhub_be.exception.ResourceNotFoundException;
 import com.example.internhub_be.payload.ChangePasswordRequest;
 import com.example.internhub_be.payload.NewAvatarUrlResponse;
 import com.example.internhub_be.payload.UserProfileResponse;
+import com.example.internhub_be.payload.UserResponse;
 import com.example.internhub_be.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,11 +28,7 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -118,6 +115,74 @@ public class UserServiceImpl implements UserService {
 
         return response;
     }
+
+    @Override
+    public List<UserResponse> getInterns() {
+
+        List<User> users = userRepository.findByRole_Name("INTERN");
+
+        return users.stream().map(user -> {
+
+            UserResponse res = new UserResponse();
+
+            res.setId(user.getId());
+            res.setName(user.getName());
+            res.setEmail(user.getEmail());
+
+            if (user.getRole() != null) {
+                res.setRoleId(user.getRole().getId());
+                res.setRoleName(user.getRole().getName());
+            }
+
+            if (user.getDepartment() != null) {
+                res.setDepartmentId(user.getDepartment().getId());
+                res.setDepartmentName(user.getDepartment().getName());
+            }
+
+            res.setPhone(user.getPhone());
+            res.setAvatar(user.getAvatar());
+            res.setIsActive(user.getIsActive());
+            res.setCreatedAt(user.getCreatedAt());
+
+            return res;
+
+        }).toList();
+    }
+
+
+    @Override
+    public List<UserResponse> getUsersByRoleResponse(String roleName) {
+
+        List<User> users = userRepository.findByRole_Name(roleName);
+
+        return users.stream().map(user -> {
+
+            UserResponse res = new UserResponse();
+
+            res.setId(user.getId());
+            res.setName(user.getName());
+            res.setEmail(user.getEmail());
+
+            if (user.getRole() != null) {
+                res.setRoleId(user.getRole().getId());
+                res.setRoleName(user.getRole().getName());
+            }
+
+            if (user.getDepartment() != null) {
+                res.setDepartmentId(user.getDepartment().getId());
+                res.setDepartmentName(user.getDepartment().getName());
+            }
+
+            res.setPhone(user.getPhone());
+            res.setAvatar(user.getAvatar());
+            res.setIsActive(user.getIsActive());
+            res.setCreatedAt(user.getCreatedAt());
+
+            return res;
+
+        }).toList();
+    }
+
 
     @Override
     @Transactional
@@ -213,5 +278,15 @@ public class UserServiceImpl implements UserService {
         auditLogService.logAction("UPDATE_AVATAR", user, details);
 
         return new NewAvatarUrlResponse(newAvatarUrl);
+    }
+
+    @Override
+    public List<User> getUsersByRole(String roleName) {
+
+        return userRepository.findAll()
+                .stream()
+                .filter(u -> u.getRole() != null &&
+                        roleName.equalsIgnoreCase(u.getRole().getName()))
+                .toList();
     }
 }

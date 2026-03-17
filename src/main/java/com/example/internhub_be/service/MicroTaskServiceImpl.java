@@ -1,27 +1,17 @@
 package com.example.internhub_be.service;
 
-import com.example.internhub_be.domain.FinalEvaluation;
-import com.example.internhub_be.domain.MicroTask;
-import com.example.internhub_be.domain.Skill;
-import com.example.internhub_be.domain.TaskSkillRating;
-import com.example.internhub_be.domain.TaskSkillRatingId;
-import com.example.internhub_be.domain.User;
-import com.example.internhub_be.payload.request.CreateMicroTaskRequest;
-import com.example.internhub_be.payload.request.ReviewTaskRequest;
-import com.example.internhub_be.payload.request.SkillWeightRequest;
-import com.example.internhub_be.payload.request.SubmitTaskRequest;
-import com.example.internhub_be.repository.FinalEvaluationRepository;
-import com.example.internhub_be.repository.MicroTaskRepository;
-import com.example.internhub_be.repository.SkillRepository;
-import com.example.internhub_be.repository.TaskSkillRatingRepository;
-import com.example.internhub_be.repository.UserRepository;
-import com.example.internhub_be.payload.response.TaskDetailResponse;
-import com.example.internhub_be.payload.response.TaskSkillResponse;
+import com.example.internhub_be.domain.*;
+import com.example.internhub_be.payload.request.*;
+import com.example.internhub_be.payload.response.*;
+import com.example.internhub_be.repository.*;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,45 +20,42 @@ import java.util.stream.Collectors;
 public class MicroTaskServiceImpl implements MicroTaskService {
 
     private final MicroTaskRepository microTaskRepository;
+    private final TaskSkillRatingRepository taskSkillRatingRepository;
     private final SkillRepository skillRepository;
-    private final TaskSkillRatingRepository ratingRepository;
     private final UserRepository userRepository;
-    private final FinalEvaluationRepository finalEvaluationRepository;
 
-    // ================= CREATE TASK =================
+    /*
+    =========================
+    CREATE TASK
+    =========================
+    */
 
     @Override
-    @Transactional
-    public void createTask(CreateMicroTaskRequest request, Long mentorId) {
+    public void createTask(CreateMicroTaskRequest request) {
 
-        if (request.getSkills() == null || request.getSkills().isEmpty()) {
-            throw new RuntimeException("At least one skill must be selected");
-        }
+        Authentication authentication = SecurityContextHolder
+                .getContext()
+                .getAuthentication();
 
-        if (request.getInternIds() == null || request.getInternIds().isEmpty()) {
-            throw new RuntimeException("At least one intern must be assigned");
-        }
+        String email = authentication.getName();
 
-        User mentor = userRepository.findById(mentorId)
+        User mentor = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Mentor not found"));
 
         for (Long internId : request.getInternIds()) {
-
-            // Kiểm tra intern đã bị khóa chưa (đánh giá cuối kỳ đã SUBMITTED)
-            checkInternNotLocked(internId, "giao task mới");
 
             User intern = userRepository.findById(internId)
                     .orElseThrow(() -> new RuntimeException("Intern not found"));
 
             MicroTask task = new MicroTask();
+
             task.setTitle(request.getTitle());
             task.setDescription(request.getDescription());
             task.setDeadline(request.getDeadline());
-            task.setStatus(MicroTask.MicroTaskStatus.Todo);
             task.setMentor(mentor);
             task.setIntern(intern);
 
-            microTaskRepository.save(task);
+            task = microTaskRepository.saveAndFlush(task);
 
             for (SkillWeightRequest skillReq : request.getSkills()) {
 
@@ -76,42 +63,165 @@ public class MicroTaskServiceImpl implements MicroTaskService {
                         .orElseThrow(() -> new RuntimeException("Skill not found"));
 
                 TaskSkillRating rating = new TaskSkillRating();
-                TaskSkillRatingId id = new TaskSkillRatingId(task.getId(), skill.getId());
+
+                TaskSkillRatingId id = new TaskSkillRatingId(
+                        task.getId(),
+                        skill.getId()
+                );
+
                 rating.setId(id);
                 rating.setMicroTask(task);
                 rating.setSkill(skill);
                 rating.setWeight(skillReq.getWeight());
 
-                ratingRepository.save(rating);
+                taskSkillRatingRepository.save(rating);
             }
         }
     }
 
-    // ================= GET TASKS BY INTERN =================
+    /*
+    =========================
+    TASKS FOR INTERN
+    =========================
+    */
 
     @Override
-    public List<MicroTask> getTasksByIntern(Long internId) {
-        return microTaskRepository.findByInternId(internId);
+    public List<TaskResponse> getTasksForCurrentIntern() {
+
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        User intern = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<MicroTask> tasks = microTaskRepository.findByIntern(intern);
+
+        return tasks.stream()
+                .map(task -> TaskResponse.builder()
+                        .id(task.getId())
+                        .title(task.getTitle())
+                        .description(task.getDescription())
+                        .status(task.getStatus().name())
+                        .deadline(task.getDeadline())
+                        .build())
+                .collect(Collectors.toList());
     }
 
-    // ================= SUBMIT TASK =================
+    /*
+    =========================
+    TASKS FOR MENTOR
+    =========================
+    */
 
     @Override
-    @Transactional
-    public void submitTask(Long taskId, SubmitTaskRequest request) {
+    public List<TaskResponse> getTasksForCurrentMentor() {
+
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        User mentor = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<MicroTask> tasks = microTaskRepository.findByMentor(mentor);
+
+        return tasks.stream()
+                .map(task -> TaskResponse.builder()
+                        .id(task.getId())
+                        .title(task.getTitle())
+                        .description(task.getDescription())
+                        .status(task.getStatus().name())
+                        .deadline(task.getDeadline())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /*
+    =========================
+    TASK DETAIL
+    =========================
+    */
+
+    @Override
+    public TaskDetailResponse getTaskDetail(Long taskId) {
 
         MicroTask task = microTaskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
-        // Kiểm tra intern đã bị khóa (đánh giá cuối kỳ đã SUBMITTED)
+        List<TaskSkillRating> ratings =
+                taskSkillRatingRepository.findByMicroTask(task);
+
+        TaskDetailResponse response = new TaskDetailResponse();
+
+        response.setId(task.getId());
+        response.setTitle(task.getTitle());
+        response.setDescription(task.getDescription());
+        response.setDeadline(task.getDeadline());
+        response.setStatus(task.getStatus().name());
+        response.setSubmissionLink(task.getSubmissionLink());
+        response.setSubmissionNote(task.getSubmissionNote());
+
+    /*
+    =========================
+    INTERN
+    =========================
+    */
+
+        List<InternResponse> internResponses = new ArrayList<>();
+
         if (task.getIntern() != null) {
-            checkInternNotLocked(task.getIntern().getId(), "nộp bài");
+
+            InternResponse intern = new InternResponse();
+
+            intern.setId(task.getIntern().getId());
+            intern.setName(task.getIntern().getName());
+            intern.setEmail(task.getIntern().getEmail());
+
+            internResponses.add(intern);
         }
 
-        if (task.getStatus() != MicroTask.MicroTaskStatus.Todo &&
-                task.getStatus() != MicroTask.MicroTaskStatus.In_Progress) {
-            throw new RuntimeException("Task cannot be submitted");
+        response.setAssignedInterns(internResponses);
+
+    /*
+    =========================
+    SKILLS
+    =========================
+    */
+
+        List<SkillRatingResponse> skillResponses = new ArrayList<>();
+
+        for (TaskSkillRating r : ratings) {
+
+            SkillRatingResponse sr = new SkillRatingResponse();
+
+            sr.setSkillId(r.getSkill().getId());
+            sr.setSkillName(r.getSkill().getName());
+            sr.setWeight(r.getWeight());
+            sr.setRatingScore(r.getRatingScore());
+            sr.setReviewComment(r.getReviewComment());
+
+            skillResponses.add(sr);
         }
+
+        response.setSkills(skillResponses);
+
+        return response;
+    }
+
+    /*
+    =========================
+    SUBMIT TASK
+    =========================
+    */
+
+    @Override
+    public void submitTask(Long taskId, SubmitTaskRequest request) {
+
+        MicroTask task = microTaskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
 
         task.setSubmissionLink(request.getSubmissionLink());
         task.setSubmissionNote(request.getSubmissionNote());
@@ -120,82 +230,79 @@ public class MicroTaskServiceImpl implements MicroTaskService {
         microTaskRepository.save(task);
     }
 
-    // ================= REVIEW TASK =================
+    /*
+    =========================
+    DELETE TASK
+    =========================
+    */
 
     @Override
-    @Transactional
+    public void deleteTask(Long taskId) {
+
+        MicroTask task = microTaskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
+
+        List<TaskSkillRating> ratings =
+                taskSkillRatingRepository.findByMicroTask(task);
+
+        taskSkillRatingRepository.deleteAll(ratings);
+
+        microTaskRepository.delete(task);
+    }
+
+    /*
+    =========================
+    REVIEW TASK
+    =========================
+    */
+
+    @Override
     public void reviewTask(Long taskId, ReviewTaskRequest request) {
 
         MicroTask task = microTaskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
-        // Kiểm tra intern đã bị khóa (đánh giá cuối kỳ đã SUBMITTED)
-        if (task.getIntern() != null) {
-            checkInternNotLocked(task.getIntern().getId(), "chấm điểm task");
+        List<TaskSkillRating> ratings =
+                taskSkillRatingRepository.findByMicroTask(task);
+
+        for (ReviewSkillRequest skillReq : request.getSkills()) {
+
+            for (TaskSkillRating rating : ratings) {
+
+                if (rating.getSkill().getId().equals(skillReq.getSkillId())) {
+
+                    rating.setRatingScore(skillReq.getRatingScore());
+                    rating.setReviewComment(skillReq.getReviewComment());
+
+                    taskSkillRatingRepository.save(rating);
+                }
+            }
         }
-
-        if (task.getStatus() != MicroTask.MicroTaskStatus.Submitted) {
-            throw new RuntimeException("Task must be submitted before review");
-        }
-
-        request.getSkills().forEach(skillReq -> {
-
-            TaskSkillRatingId id = new TaskSkillRatingId(taskId, skillReq.getSkillId());
-            TaskSkillRating rating = ratingRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Skill rating not found"));
-
-            rating.setRatingScore(skillReq.getScore());
-            rating.setReviewComment(skillReq.getComment());
-            ratingRepository.save(rating);
-        });
 
         task.setStatus(MicroTask.MicroTaskStatus.Reviewed);
+
         microTaskRepository.save(task);
     }
-
-    // ================= GET TASK DETAIL =================
+    /*
+=========================
+UPDATE TASK
+=========================
+*/
 
     @Override
-    public TaskDetailResponse getTaskDetail(Long taskId) {
+    public void updateTask(Long taskId, UpdateMicroTaskRequest request) {
 
         MicroTask task = microTaskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
-        List<TaskSkillRating> ratings = ratingRepository.findByMicroTaskId(taskId);
+        task.setTitle(request.getTitle());
+        task.setDescription(request.getDescription());
+        task.setDeadline(request.getDeadline());
 
-        List<TaskSkillResponse> skills = ratings.stream().map(rating -> {
-            TaskSkillResponse res = new TaskSkillResponse();
-            res.setSkillId(rating.getSkill().getId());
-            res.setSkillName(rating.getSkill().getName());
-            res.setWeight(rating.getWeight());
-            res.setScore(rating.getRatingScore());
-            res.setComment(rating.getReviewComment());
-            return res;
-        }).collect(Collectors.toList());
-
-        TaskDetailResponse response = new TaskDetailResponse();
-        response.setId(task.getId());
-        response.setTitle(task.getTitle());
-        response.setDescription(task.getDescription());
-        response.setStatus(task.getStatus().name());
-        response.setSkills(skills);
-
-        return response;
+        microTaskRepository.save(task);
     }
 
-    // ─── PRIVATE HELPER ───────────────────────────────────────────────────────
 
-    /**
-     * Kiểm tra xem intern đã có đánh giá cuối kỳ ở trạng thái SUBMITTED chưa.
-     * Nếu có → ném exception để ngăn mọi thao tác mới trên task.
-     */
-    private void checkInternNotLocked(Long internId, String action) {
-        finalEvaluationRepository.findByInternId(internId).ifPresent(eval -> {
-            if (Boolean.TRUE.equals(eval.getIsLocked())) {
-                throw new IllegalStateException(
-                        "Intern này đã có đánh giá cuối kỳ được gửi phê duyệt. " +
-                                "Không thể thực hiện '" + action + "' nữa.");
-            }
-        });
-    }
+
 }
+

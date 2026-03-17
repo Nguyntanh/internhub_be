@@ -1,10 +1,7 @@
 package com.example.internhub_be.domain;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 
@@ -15,6 +12,7 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "task_skill_ratings")
 public class TaskSkillRating {
+
     @EmbeddedId
     private TaskSkillRatingId id;
 

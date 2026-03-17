@@ -1,62 +1,97 @@
 package com.example.internhub_be.controller;
 
 import com.example.internhub_be.domain.MicroTask;
+import com.example.internhub_be.payload.request.CreateMicroTaskRequest;
 import com.example.internhub_be.payload.request.ReviewTaskRequest;
 import com.example.internhub_be.payload.request.SubmitTaskRequest;
+import com.example.internhub_be.payload.request.UpdateMicroTaskRequest;
 import com.example.internhub_be.payload.response.TaskDetailResponse;
+import com.example.internhub_be.payload.response.TaskResponse;
 import com.example.internhub_be.service.MicroTaskService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Controller cũ — giữ lại để tương thích ngược nhưng đã được bảo vệ bằng auth.
- * Ưu tiên dùng:
- *   - /api/intern/tasks  (InternTaskController)  cho Intern
- *   - /api/mentor/tasks  (MentorTaskController)  cho Mentor
- */
 @RestController
 @RequestMapping("/api/tasks")
 @RequiredArgsConstructor
-@PreAuthorize("isAuthenticated()")
 public class MicroTaskController {
 
     private final MicroTaskService microTaskService;
 
-    @GetMapping("/intern/{internId}")
-    @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN', 'MANAGER', 'HR')")
-    public List<MicroTask> getTasksByIntern(@PathVariable Long internId) {
-        return microTaskService.getTasksByIntern(internId);
+    // Mentor tạo task
+    @PostMapping
+    public String createTask(@Valid @RequestBody CreateMicroTaskRequest request) {
+
+        microTaskService.createTask(request);
+
+        return "Task created successfully";
     }
 
+    // Intern xem task của mình
+    @GetMapping("/intern")
+    public List<TaskResponse> getMyTasks() {
+        return microTaskService.getTasksForCurrentIntern();
+    }
+
+    // Mentor xem task đã giao
+    @GetMapping("/mentor")
+    public List<TaskResponse> getMentorTasks() {
+        return microTaskService.getTasksForCurrentMentor();
+    }
+
+    // Chi tiết task
     @GetMapping("/{taskId}")
-    @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN', 'MANAGER', 'INTERN')")
     public TaskDetailResponse getTaskDetail(@PathVariable Long taskId) {
+
         return microTaskService.getTaskDetail(taskId);
     }
 
+    // Intern submit task
     @PostMapping("/{taskId}/submit")
-    @PreAuthorize("hasRole('INTERN')")
     public String submitTask(
             @PathVariable Long taskId,
-            @RequestBody SubmitTaskRequest request
+            @Valid @RequestBody SubmitTaskRequest request
     ) {
+
         microTaskService.submitTask(taskId, request);
+
         return "Task submitted successfully";
     }
 
+    // Mentor review task
     @PostMapping("/{taskId}/review")
-    @PreAuthorize("hasAnyRole('MENTOR', 'ADMIN')")
     public String reviewTask(
             @PathVariable Long taskId,
             @Valid @RequestBody ReviewTaskRequest request
     ) {
+
         microTaskService.reviewTask(taskId, request);
+
         return "Task reviewed successfully";
     }
+
+    @DeleteMapping("/{taskId}")
+    public String deleteTask(@PathVariable Long taskId) {
+
+        microTaskService.deleteTask(taskId);
+
+        return "Task deleted successfully";
+    }
+
+    @PutMapping("/{taskId}")
+    public String updateTask(
+            @PathVariable Long taskId,
+            @Valid @RequestBody UpdateMicroTaskRequest request
+    ) {
+
+        microTaskService.updateTask(taskId, request);
+
+        return "Task updated successfully";
+    }
+
 }
