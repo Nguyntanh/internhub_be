@@ -1,5 +1,6 @@
 package com.example.internhub_be.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "micro_tasks")
 public class MicroTask {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -41,18 +43,23 @@ public class MicroTask {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mentor_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User mentor;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "intern_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User intern;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // Internal Enum for MicroTask Status
     public enum MicroTaskStatus {
-        Todo, In_Progress, Submitted, Reviewed, Rejected
+        Todo,
+        In_Progress,
+        Submitted,
+        Reviewed,
+        Rejected
     }
 }

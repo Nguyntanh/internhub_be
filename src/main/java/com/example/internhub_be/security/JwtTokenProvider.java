@@ -19,59 +19,51 @@ public class JwtTokenProvider {
     @Value("${app.jwt-expiration-milliseconds}")
     private long jwtExpirationDate;
 
-    // generate JWT token
+    private Key key(){
+        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
     public String generateToken(Authentication authentication){
+
         String username = authentication.getName();
 
         Date currentDate = new Date();
 
-        Date expireDate = new Date(currentDate.getTime() + jwtExpirationDate);
+        Date expireDate =
+                new Date(currentDate.getTime() + jwtExpirationDate);
 
-        String token = Jwts.builder()
+        return Jwts.builder()
                 .setSubject(username)
-                .setIssuedAt(new Date())
+                .setIssuedAt(currentDate)
                 .setExpiration(expireDate)
-                .signWith(key())
+                .signWith(key(), SignatureAlgorithm.HS256)
                 .compact();
-        return token;
     }
 
-    private Key key(){
-        byte[] bytes = Decoders.BASE64.decode(jwtSecret);
-        return Keys.hmacShaKeyFor(bytes);
-    }
-
-    // get username from JWT token
     public String getUsername(String token){
+
         Claims claims = Jwts.parserBuilder()
                 .setSigningKey(key())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-        String username = claims.getSubject();
-        return username;
+
+        return claims.getSubject();
     }
 
-    // validate JWT token
     public boolean validateToken(String token){
+
         try{
             Jwts.parserBuilder()
                     .setSigningKey(key())
                     .build()
                     .parseClaimsJws(token);
+
             return true;
-        } catch (MalformedJwtException e) {
-            // Invalid JWT token
-            throw new JwtException("Invalid JWT token");
-        } catch (ExpiredJwtException e) {
-            // Expired JWT token
-            throw new JwtException("Expired JWT token");
-        } catch (UnsupportedJwtException e) {
-            // Unsupported JWT token
-            throw new JwtException("Unsupported JWT token");
-        } catch (IllegalArgumentException e) {
-            // JWT claims string is empty
-            throw new JwtException("JWT claims string is empty");
+
+        }catch (JwtException | IllegalArgumentException e){
+            return false;
         }
     }
 }

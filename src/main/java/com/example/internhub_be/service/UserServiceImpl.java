@@ -5,10 +5,12 @@ import com.example.internhub_be.domain.InternshipProfile;
 import com.example.internhub_be.domain.User;
 import com.example.internhub_be.exception.InvalidFileException;
 import com.example.internhub_be.exception.ResourceNotFoundException;
-import com.example.internhub_be.payload.*;
-import com.example.internhub_be.repository.InternshipMilestoneRepository;
-import com.example.internhub_be.payload.response.MilestoneResponse;
+import com.example.internhub_be.payload.ChangePasswordRequest;
+import com.example.internhub_be.payload.NewAvatarUrlResponse;
+import com.example.internhub_be.payload.UserProfileResponse;
+import com.example.internhub_be.payload.UserResponse;
 import com.example.internhub_be.repository.UserRepository;
+import com.example.internhub_be.repository.InternshipMilestoneRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,8 +31,14 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.List;
+import java.util.ArrayList;
+
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -100,14 +108,14 @@ public class UserServiceImpl implements UserService {
             }
 
             // 2. Tính toán Roadmap Milestones dựa trên Position
-            if (ip.getPosition() != null && ip.getStartDate() != null) {
-                List<InternshipMilestone> milestones = milestoneRepository
-                        .findByPositionIdOrderByOrderIndexAsc(ip.getPosition().getId());
+            // if (ip.getPosition() != null && ip.getStartDate() != null) {
+            //     List<InternshipMilestone> milestones = milestoneRepository
+            //             .findByPositionIdOrderByOrderIndexAsc(ip.getPosition().getId());
                 
-                response.setRoadmap(calculateRoadmap(milestones, ip.getStartDate()));
-            } else {
-                response.setRoadmap(new ArrayList<>());
-            }
+            //     response.setRoadmap(calculateRoadmap(milestones, ip.getStartDate()));
+            // } else {
+            //     response.setRoadmap(new ArrayList<>());
+            // }
         } else {
             // Trường hợp không có profile
             response.setDaysRemaining(null);
@@ -115,42 +123,6 @@ public class UserServiceImpl implements UserService {
         }
 
         return response;
-    }
-
-    /**
-     * Logic tính toán trạng thái động cho từng Milestone
-     */
-    private List<MilestoneResponse> calculateRoadmap(List<InternshipMilestone> milestones, LocalDate startDate) {
-        LocalDate today = LocalDate.now();
-        long daysSinceStart = ChronoUnit.DAYS.between(startDate, today);
-        
-        // Sử dụng mảng 1 phần tử để có thể thay đổi giá trị bên trong lambda (effectively final)
-        int[] accumulatedDays = {0};
-
-        return milestones.stream().map(m -> {
-            int duration = (m.getDurationDays() != null) ? m.getDurationDays() : 0;
-            int milestoneEndDay = accumulatedDays[0] + duration;
-            
-            String status;
-            if (daysSinceStart >= milestoneEndDay) {
-                status = "COMPLETED";
-            } else if (daysSinceStart >= accumulatedDays[0]) {
-                status = "IN_PROGRESS"; // Đang nằm trong khoảng thời gian này
-            } else {
-                status = "TODO"; // Chưa tới
-            }
-
-            // Cộng dồn để milestone tiếp theo bắt đầu sau milestone này
-            accumulatedDays[0] += duration; 
-
-            return MilestoneResponse.builder()
-                    .id(m.getId())
-                    .title(m.getTitle())
-                    .description(m.getDescription())
-                    .orderIndex(m.getOrderIndex())
-                    .status(status)
-                    .build();
-        }).collect(Collectors.toList());
     }
 
     @Override
@@ -234,5 +206,27 @@ public class UserServiceImpl implements UserService {
         auditLogService.logAction("UPDATE_AVATAR", user, details);
 
         return new NewAvatarUrlResponse(newAvatarUrl);
+    }
+
+    @Override
+    public List<User> getUsersByRole(String roleName) {
+
+        return userRepository.findAll()
+                .stream()
+                .filter(u -> u.getRole() != null &&
+                        roleName.equalsIgnoreCase(u.getRole().getName()))
+                .toList();
+    }
+
+    @Override
+    public List<UserResponse> getInterns() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getInterns'");
+    }
+
+    @Override
+    public List<UserResponse> getUsersByRoleResponse(String roleName) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getUsersByRoleResponse'");
     }
 }
