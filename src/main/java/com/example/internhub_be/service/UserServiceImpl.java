@@ -38,6 +38,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -219,14 +220,39 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserResponse> getInterns() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getInterns'");
+        return getUsersByRole("INTERN").stream()
+                .map(this::mapUserToUserResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserResponse> getUsersByRoleResponse(String roleName) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getUsersByRoleResponse'");
+        return getUsersByRole(roleName).stream()
+                .map(this::mapUserToUserResponse)
+                .collect(Collectors.toList());
+    }
+
+    private UserResponse mapUserToUserResponse(User user) {
+        UserResponse userResponse = new UserResponse();
+        userResponse.setId(user.getId());
+        userResponse.setName(user.getName());
+        userResponse.setEmail(user.getEmail());
+        userResponse.setIsActive(user.getIsActive());
+        userResponse.setPhone(user.getPhone());
+        userResponse.setAvatar(user.getAvatar());
+        userResponse.setCreatedAt(user.getCreatedAt());
+
+        if (user.getRole() != null) {
+            userResponse.setRoleId(user.getRole().getId());
+            userResponse.setRoleName(user.getRole().getName());
+        }
+        if (user.getDepartment() != null) {
+            userResponse.setDepartmentId(user.getDepartment().getId());
+            userResponse.setDepartmentName(user.getDepartment().getName());
+        }
+        return userResponse;
     }
 }
