@@ -12,7 +12,7 @@ public class TaskSkillRatingRequest {
     private Integer weight = 1;
     @NotNull(message = "Điểm đánh giá không được để trống")
     @DecimalMin(value = "0.00", message = "Điểm tối thiểu là 0.00")
-    @DecimalMax(value = "5.00", message = "Điểm tối đa là 5.00")
+    @DecimalMax(value = "10.00", message = "Điểm tối đa là 10.00")
     private BigDecimal ratingScore;
     private String reviewComment;
 }
