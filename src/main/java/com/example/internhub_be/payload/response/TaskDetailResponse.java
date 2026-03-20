@@ -2,6 +2,7 @@ package com.example.internhub_be.payload.response;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -13,8 +14,16 @@ public class TaskDetailResponse {
 
     private String description;
 
+    private LocalDateTime deadline;
+
     private String status;
 
-    private List<TaskSkillResponse> skills;
+    private String submissionLink;
+
+    private String submissionNote;
+
+    private List<InternResponse> assignedInterns;
+
+    private List<SkillRatingResponse> skills;
 
 }
