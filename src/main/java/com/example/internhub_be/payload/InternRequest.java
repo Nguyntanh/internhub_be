@@ -6,6 +6,7 @@ import java.time.LocalDate;
 
 @Data
 public class InternRequest {
+    private Long userId;
 
     // ── users table ───────────────────────────────────────────────────────
     private String fullName;   // → users.name

@@ -7,6 +7,8 @@ import com.example.internhub_be.exception.ResourceNotFoundException;
 import com.example.internhub_be.payload.ChangePasswordRequest;
 import com.example.internhub_be.payload.NewAvatarUrlResponse;
 import com.example.internhub_be.payload.UserProfileResponse;
+import com.example.internhub_be.payload.UserResponse;
+import com.example.internhub_be.repository.InternshipProfileRepository;
 import com.example.internhub_be.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -36,24 +38,26 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
+    private final InternshipProfileRepository internshipProfileRepository; // THÊM
     private final Path uploadPath;
 
-    private static final String DEFAULT_AVATAR = "default_avatar.png"; // Placeholder for default avatar
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final String DEFAULT_AVATAR = "default_avatar.png";
+    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
     private static final String[] ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"};
-
 
     public UserServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             AuditLogService auditLogService,
             ObjectMapper objectMapper,
+            InternshipProfileRepository internshipProfileRepository, // THÊM
             @Value("${app.upload.dir:uploads}") String uploadDir
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
         this.objectMapper = objectMapper;
+        this.internshipProfileRepository = internshipProfileRepository; // THÊM
         this.uploadPath = Paths.get(uploadDir, "avatars").toAbsolutePath().normalize();
 
         try {
@@ -74,11 +78,8 @@ public class UserServiceImpl implements UserService {
         response.setEmail(user.getEmail());
         response.setPhone(user.getPhone());
         response.setAvatar(user.getAvatar());
-
-        // Set department name from user's department
         response.setDepartmentName(user.getDepartment() != null ? user.getDepartment().getName() : null);
 
-        // Handle internship profile if it exists
         InternshipProfile ip = user.getInternshipProfile();
         if (ip != null) {
             response.setMajor(ip.getMajor());
@@ -89,11 +90,10 @@ public class UserServiceImpl implements UserService {
             response.setEndDate(ip.getEndDate());
             response.setMentorName(ip.getMentor() != null ? ip.getMentor().getName() : null);
 
-            // Calculate daysRemaining
             if (ip.getEndDate() != null) {
                 LocalDate today = LocalDate.now();
                 if (ip.getEndDate().isBefore(today)) {
-                    response.setDaysRemaining(0L); // Internship ended
+                    response.setDaysRemaining(0L);
                 } else {
                     response.setDaysRemaining(ChronoUnit.DAYS.between(today, ip.getEndDate()));
                 }
@@ -101,7 +101,6 @@ public class UserServiceImpl implements UserService {
                 response.setDaysRemaining(null);
             }
         } else {
-            // If no internship profile, explicitly set fields to null and daysRemaining to null
             response.setMajor(null);
             response.setUniversityName(null);
             response.setPositionName(null);
@@ -118,7 +117,6 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void changePassword(String email, ChangePasswordRequest changePasswordRequest) {
-        // Retrieve the authenticated user's email from SecurityContextHolder
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String currentAuthenticatedUserEmail = authentication.getName();
 
@@ -129,27 +127,21 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
-        // So khớp mật khẩu cũ
         if (!passwordEncoder.matches(changePasswordRequest.getOldPassword(), user.getPassword())) {
             throw new BadCredentialsException("Incorrect old password.");
         }
 
-        // Cập nhật mật khẩu mới
         user.setPassword(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
         userRepository.save(user);
 
-        // Ghi Nhật ký Hệ thống (Audit Log)
         Map<String, Object> details = new HashMap<>();
-        details.put("timestamp", LocalDateTime.now().toString()); // Storing as String for consistent JSON representation
-
-        // Call logAction with the correct parameters
+        details.put("timestamp", LocalDateTime.now().toString());
         auditLogService.logAction("CHANGE_PASSWORD", user, details);
     }
 
     @Override
     @Transactional
     public NewAvatarUrlResponse updateAvatar(String email, MultipartFile file) {
-        // Validate file
         if (file.isEmpty()) {
             throw new InvalidFileException("Cannot upload empty file.");
         }
@@ -170,11 +162,9 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
 
-        // Delete old avatar if it exists and is not the default
         String oldAvatarUrl = user.getAvatar();
         if (oldAvatarUrl != null && !oldAvatarUrl.contains(DEFAULT_AVATAR)) {
             try {
-                // Assuming avatar URLs are stored as /assets/avatars/filename.ext
                 String oldFilename = oldAvatarUrl.substring(oldAvatarUrl.lastIndexOf("/") + 1);
                 Path oldFilePath = this.uploadPath.resolve(oldFilename).normalize();
                 if (Files.exists(oldFilePath)) {
@@ -182,11 +172,9 @@ public class UserServiceImpl implements UserService {
                 }
             } catch (IOException e) {
                 System.err.println("Could not delete old avatar file: " + e.getMessage());
-                // Log the error but don't prevent new avatar upload
             }
         }
 
-        // Generate unique filename
         String newFilename = "avatar_" + user.getId() + "_" + System.currentTimeMillis() + "." + fileExtension;
         Path targetLocation = this.uploadPath.resolve(newFilename);
 
@@ -196,12 +184,10 @@ public class UserServiceImpl implements UserService {
             throw new InvalidFileException("Could not store file " + newFilename, e);
         }
 
-        // Update user's avatar URL in database
         String newAvatarUrl = "/assets/avatars/" + newFilename;
         user.setAvatar(newAvatarUrl);
         userRepository.save(user);
 
-        // Audit Log
         Map<String, Object> details = new HashMap<>();
         details.put("timestamp", LocalDateTime.now().toString());
         details.put("newAvatarUrl", newAvatarUrl);
@@ -213,11 +199,47 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<User> getUsersByRole(String roleName) {
-
         return userRepository.findAll()
                 .stream()
                 .filter(u -> u.getRole() != null &&
                         roleName.equalsIgnoreCase(u.getRole().getName()))
                 .toList();
+    }
+
+    // THÊM MỚI: lấy user có role INTERN chưa có hồ sơ thực tập
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserResponse> getAvailableInterns() {
+        Set<Long> userIdsWithProfile = internshipProfileRepository.findAll()
+                .stream()
+                .map(ip -> ip.getUser().getId())
+                .collect(Collectors.toSet());
+
+        return userRepository.findAll().stream()
+                .filter(u -> u.getRole() != null
+                        && "INTERN".equalsIgnoreCase(u.getRole().getName())
+                        && !userIdsWithProfile.contains(u.getId()))
+                .map(this::mapToUserResponse)
+                .collect(Collectors.toList());
+    }
+
+    private UserResponse mapToUserResponse(User user) {
+        UserResponse resp = new UserResponse();
+        resp.setId(user.getId());
+        resp.setName(user.getName());
+        resp.setEmail(user.getEmail());
+        resp.setIsActive(user.getIsActive());
+        resp.setPhone(user.getPhone());
+        resp.setAvatar(user.getAvatar());
+        resp.setCreatedAt(user.getCreatedAt());
+        if (user.getRole() != null) {
+            resp.setRoleId(user.getRole().getId());
+            resp.setRoleName(user.getRole().getName());
+        }
+        if (user.getDepartment() != null) {
+            resp.setDepartmentId(user.getDepartment().getId());
+            resp.setDepartmentName(user.getDepartment().getName());
+        }
+        return resp;
     }
 }

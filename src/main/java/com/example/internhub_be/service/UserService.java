@@ -5,6 +5,7 @@ import com.example.internhub_be.payload.ChangePasswordRequest;
 import com.example.internhub_be.payload.NewAvatarUrlResponse;
 import com.example.internhub_be.payload.UserProfileResponse;
 import org.springframework.web.multipart.MultipartFile;
+import com.example.internhub_be.payload.UserResponse;
 
 import java.util.List;
 
@@ -13,4 +14,5 @@ public interface UserService {
     void changePassword(String email, ChangePasswordRequest changePasswordRequest);
     NewAvatarUrlResponse updateAvatar(String email, MultipartFile file);
     List<User> getUsersByRole(String roleName);
+    List<UserResponse> getAvailableInterns();
 }

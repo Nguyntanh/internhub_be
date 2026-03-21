@@ -24,52 +24,66 @@ public class InternService {
     private final UniversityRepository        universityRepo;
     private final InternshipPositionRepository positionRepo;
     private final RoleRepository              roleRepo;
-    private final DepartmentRepository departmentRepo;
-    // ── GET ALL ──────────────────────────────────────────────────────────
+    private final DepartmentRepository        departmentRepo;
+
     @Transactional(readOnly = true)
     public List<InternResponse> getAll() {
-        // Dùng JOIN FETCH để load hết relations trong 1 query, tránh LazyInitializationException
         return profileRepo.findAllWithRelations()
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    // ── GET BY ID ────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public InternResponse getById(Long id) {
         return toResponse(findProfileOrThrow(id));
     }
 
-    // ── CREATE ───────────────────────────────────────────────────────────
     @Transactional
     public InternResponse create(InternRequest req) {
-        if (userRepo.existsByEmail(req.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Email \"" + req.getEmail() + "\" đã tồn tại trong hệ thống.");
+        User user;
+
+        if (req.getUserId() != null) {
+            // ── Dùng user có sẵn ─────────────────────────────────────────
+            user = userRepo.findById(req.getUserId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Không tìm thấy người dùng id: " + req.getUserId()));
+
+            // Kiểm tra user đã có profile chưa
+            if (profileRepo.findAll().stream()
+                    .anyMatch(p -> p.getUser().getId().equals(user.getId()))) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Người dùng này đã có hồ sơ thực tập.");
+            }
+        } else {
+            // ── Tạo user mới (luồng cũ) ───────────────────────────────────
+            if (userRepo.existsByEmail(req.getEmail())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Email \"" + req.getEmail() + "\" đã tồn tại trong hệ thống.");
+            }
+
+            Role internRole = roleRepo.findByName("INTERN")
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Role 'INTERN' chưa được khởi tạo trong bảng roles."));
+
+            user = new User();
+            user.setName(req.getFullName());
+            user.setEmail(req.getEmail());
+            user.setPhone(req.getPhone());
+            user.setPassword(UUID.randomUUID().toString());
+            user.setRole(internRole);
+            user.setIsActive(false);
+            user.setActivationToken(UUID.randomUUID().toString());
+            user.setCreatedAt(LocalDateTime.now());
+            userRepo.save(user);
         }
 
-        Role internRole = roleRepo.findByName("INTERN")
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Role 'INTERN' chưa được khởi tạo trong bảng roles."));
-
-        User user = new User();
-        user.setName(req.getFullName());
-        user.setEmail(req.getEmail());
-        user.setPhone(req.getPhone());
-        user.setPassword(UUID.randomUUID().toString());
-        user.setRole(internRole);
-        user.setIsActive(false);
-        user.setActivationToken(UUID.randomUUID().toString());
-        user.setCreatedAt(LocalDateTime.now());
-
-        // ← lưu departmentId vào user
+        // Cập nhật department vào user nếu có
         if (req.getDepartmentId() != null) {
             departmentRepo.findById(req.getDepartmentId())
                     .ifPresent(user::setDepartment);
+            userRepo.save(user);
         }
-
-        userRepo.save(user);
 
         InternshipProfile profile = new InternshipProfile();
         profile.setUser(user);
@@ -80,7 +94,6 @@ public class InternService {
         return toResponse(findProfileOrThrow(profile.getId()));
     }
 
-    // ── UPDATE ───────────────────────────────────────────────────────────
     @Transactional
     public InternResponse update(Long id, InternRequest req) {
         InternshipProfile profile = findProfileOrThrow(id);
@@ -96,7 +109,6 @@ public class InternService {
         user.setEmail(req.getEmail());
         user.setPhone(req.getPhone());
 
-        // ← update departmentId trong user
         if (req.getDepartmentId() != null) {
             departmentRepo.findById(req.getDepartmentId())
                     .ifPresent(user::setDepartment);
@@ -113,14 +125,12 @@ public class InternService {
         return toResponse(findProfileOrThrow(id));
     }
 
-    // ── DELETE ───────────────────────────────────────────────────────────
     @Transactional
     public void delete(Long id) {
         InternshipProfile profile = findProfileOrThrow(id);
-        userRepo.delete(profile.getUser()); // CASCADE xóa profile
+        userRepo.delete(profile.getUser());
     }
 
-    // ── UPDATE STATUS ────────────────────────────────────────────────────
     @Transactional
     public InternResponse updateStatus(Long id, InternshipStatus status) {
         InternshipProfile profile = findProfileOrThrow(id);
@@ -192,7 +202,6 @@ public class InternService {
                 r.setDepartmentName(p.getPosition().getDepartment().getName());
             }
         } else if (p.getUser() != null && p.getUser().getDepartment() != null) {
-            // ← fallback: lấy dept từ user khi chưa có position
             r.setDepartmentId(p.getUser().getDepartment().getId());
             r.setDepartmentName(p.getUser().getDepartment().getName());
         }
