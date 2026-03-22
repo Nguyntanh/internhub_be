@@ -14,6 +14,10 @@ public interface MicroTaskRepository extends JpaRepository<MicroTask, Long> {
 
     List<MicroTask> findByMentor(User mentor);
 
-    // ✅ Thêm method này — MentorTaskServiceImpl cần để lấy task đã submitted
-    List<MicroTask> findByMentorAndStatus(User mentor, MicroTask.MicroTaskStatus status);
-}
+    
+        // ✅ Thêm method này — MentorTaskServiceImpl cần để lấy task đã submitted
+        List<MicroTask> findByMentorAndStatus(User mentor, MicroTask.MicroTaskStatus status);
+    
+        List<MicroTask> findByInternIdAndStatusIn(Long internId, List<MicroTask.MicroTaskStatus> statuses);
+    }
+    
