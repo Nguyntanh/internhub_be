@@ -75,7 +75,12 @@ class MicroTaskServiceTest {
         request.setDescription("Description for test task");
         request.setDeadline(LocalDateTime.now().plusDays(7));
         request.setInternIds(Collections.singletonList(internId));
-        request.setSkills(Collections.singletonList(new SkillWeightRequest()));
+        request.setSkills(Collections.singletonList(
+            SkillWeightRequest.builder()
+                .skillId(skillId) // Use the stubbed skillId
+                .weight(1) // Example weight
+                .build()
+        ));
 
         MicroTask savedTask = new MicroTask();
         savedTask.setId(10L); // simulate ID generated after save
@@ -155,7 +160,12 @@ class MicroTaskServiceTest {
         request.setTitle("Test Task");
         request.setDeadline(LocalDateTime.now().plusDays(7));
         request.setInternIds(Collections.singletonList(internId));
-        request.setSkills(Collections.singletonList(new SkillWeightRequest()));
+        request.setSkills(Collections.singletonList(
+            SkillWeightRequest.builder()
+                .skillId(nonexistentSkillId) // Use the nonexistentSkillId
+                .weight(1) // Example weight
+                .build()
+        ));
 
         MicroTask savedTask = new MicroTask(); // Needs to be mocked even if skill not found
         savedTask.setId(10L);

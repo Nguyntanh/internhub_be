@@ -6,6 +6,7 @@ import com.example.internhub_be.payload.request.DepartmentRequest;
 import com.example.internhub_be.payload.response.DepartmentResponse;
 import com.example.internhub_be.repository.DepartmentRepository;
 import com.example.internhub_be.repository.UserRepository;
+import com.example.internhub_be.repository.InternshipProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,9 @@ class DepartmentServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private InternshipProfileRepository internshipProfileRepository; // Added mock for InternshipProfileRepository
 
     @InjectMocks
     private DepartmentService departmentService;
