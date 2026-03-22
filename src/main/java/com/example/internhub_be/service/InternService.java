@@ -162,7 +162,20 @@ public class InternService {
     @Transactional
     public void delete(Long id) {
         InternshipProfile profile = findProfileOrThrow(id);
-        userRepo.delete(profile.getUser());
+        User user = profile.getUser();
+
+        boolean isHrCreated = Boolean.FALSE.equals(user.getIsActive())
+                && user.getActivationToken() != null;
+
+        if (isHrCreated) {
+            // User do HR tạo → xóa cả user (cascade sẽ xóa profile theo)
+            userRepo.delete(user);
+        } else {
+            // User có sẵn → chỉ xóa profile, giữ nguyên user account
+            user.setInternshipProfile(null);
+            userRepo.save(user);
+            profileRepo.delete(profile);
+        }
     }
 
     // ── UPDATE STATUS ────────────────────────────────────────────────────
