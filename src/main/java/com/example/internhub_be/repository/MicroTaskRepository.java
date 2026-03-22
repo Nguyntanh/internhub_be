@@ -8,12 +8,12 @@ import java.util.List;
 
 public interface MicroTaskRepository extends JpaRepository<MicroTask, Long> {
 
+    List<MicroTask> findByInternId(Long internId);
 
-        List<MicroTask> findByInternId(Long internId);
+    List<MicroTask> findByIntern(User intern);
 
-        List<MicroTask> findByIntern(User intern);
+    List<MicroTask> findByMentor(User mentor);
 
-        List<MicroTask> findByMentor(User mentor);
-
-    }
-
+    // ✅ Thêm method này — MentorTaskServiceImpl cần để lấy task đã submitted
+    List<MicroTask> findByMentorAndStatus(User mentor, MicroTask.MicroTaskStatus status);
+}

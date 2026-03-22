@@ -34,6 +34,19 @@ public class InternController {
         return internService.create(req);
     }
 
+    /**
+     * POST /api/interns/from-user/{userId}
+     * Tạo InternshipProfile từ User có sẵn (đã có role INTERN trong DB).
+     * Tránh lỗi 409 khi email đã tồn tại.
+     */
+    @PostMapping("/from-user/{userId}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public InternResponse createFromExistingUser(
+            @PathVariable Long userId,
+            @RequestBody InternRequest req) {
+        return internService.createFromExistingUser(userId, req);
+    }
+
     @PutMapping("/{id}")
     public InternResponse update(@PathVariable Long id,
                                  @RequestBody InternRequest req) {

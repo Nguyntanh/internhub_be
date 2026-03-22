@@ -35,5 +35,9 @@ public class DepartmentResponse {
         private String name;
         private String email;
         private String roleName;
+        /** Vị trí thực tập (chỉ có với INTERN) */
+        private String positionName;
+        /** Phòng ban thực tập (từ InternshipProfile) */
+        private String internDepartmentName;
     }
 }
