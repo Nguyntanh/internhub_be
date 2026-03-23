@@ -1,7 +1,10 @@
 package com.example.internhub_be.service;
 
-import com.example.internhub_be.domain.MicroTask;
-import com.example.internhub_be.payload.request.*;
+import com.example.internhub_be.payload.request.CreateMicroTaskRequest;
+import com.example.internhub_be.payload.request.DuplicateTaskRequest;
+import com.example.internhub_be.payload.request.ReviewTaskRequest;
+import com.example.internhub_be.payload.request.SubmitTaskRequest;
+import com.example.internhub_be.payload.request.UpdateMicroTaskRequest;
 import com.example.internhub_be.payload.response.TaskDetailResponse;
 import com.example.internhub_be.payload.response.TaskResponse;
 
@@ -21,8 +24,11 @@ public interface MicroTaskService {
 
     void reviewTask(Long taskId, ReviewTaskRequest request);
 
-    void deleteTask(Long taskId); // thêm dòng này
+    void deleteTask(Long taskId);
 
     void updateTask(Long taskId, UpdateMicroTaskRequest request);
 
+    // ✅ MỚI: Duplicate task sang intern mới với deadline mới.
+    // Giữ nguyên title, description, skill tags, weight từ task gốc.
+    List<TaskDetailResponse> duplicateTask(Long taskId, DuplicateTaskRequest request);
 }
