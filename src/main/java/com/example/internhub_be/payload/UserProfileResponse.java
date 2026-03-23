@@ -6,6 +6,9 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
+import com.example.internhub_be.payload.response.MilestoneResponse;
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,4 +28,5 @@ public class UserProfileResponse {
     private LocalDate endDate;
     private String mentorName;
     private Long daysRemaining; // New field
+    private List<MilestoneResponse> roadmap;
 }

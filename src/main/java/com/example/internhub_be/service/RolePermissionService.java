@@ -10,5 +10,7 @@ public interface RolePermissionService {
     List<RolePermissionResponse> getRolePermissionsByRoleId(Long roleId);
     void deleteRolePermission(Long roleId, Long functionId);
     RolePermissionResponse getRolePermissionById(Long roleId, Long functionId);
-    List<RolePermissionResponse> getAllRolePermissions(); // New method
+    List<RolePermissionResponse> getAllRolePermissions();
+
+    List<com.example.internhub_be.payload.response.RoleResponse> getAllRoles();
 }

@@ -6,6 +6,7 @@ import com.example.internhub_be.domain.User;
 import com.example.internhub_be.repository.FunctionRepository;
 import com.example.internhub_be.repository.RolePermissionRepository;
 import com.example.internhub_be.repository.UserRepository;
+import com.example.internhub_be.security.UserPrincipal;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -72,10 +73,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             }
         }
 
-        return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPassword(),
-                authorities
-        );
+        return UserPrincipal.create(user, authorities);
     }
 }

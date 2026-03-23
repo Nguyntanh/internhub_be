@@ -3,8 +3,10 @@ package com.example.internhub_be.payload.request;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.Data;
+import lombok.Builder;
 
 @Data
+@Builder
 public class SkillWeightRequest {
 
     private Long skillId;
