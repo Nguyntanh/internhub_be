@@ -84,6 +84,9 @@ public class SecurityConfig {
                         // ── Toàn bộ /api/admin/** còn lại chỉ ADMIN ──────────────────
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
+                        // ── Radar Analytics ───────────────────────────────────────────
+                        .requestMatchers(HttpMethod.GET, "/api/radar/**").authenticated()
+
                         // ── Mọi request khác: phải đăng nhập ─────────────────────────
                         .anyRequest().authenticated()
                 );
