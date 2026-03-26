@@ -1,17 +1,15 @@
 package com.example.internhub_be.domain;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-
 import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @Entity
 @Table(name = "final_evaluations")
 public class FinalEvaluation {
@@ -20,7 +18,7 @@ public class FinalEvaluation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne // Mỗi Intern chỉ có duy nhất một bản đánh giá cuối cùng
     @JoinColumn(name = "intern_id", nullable = false)
     private User intern;
 
@@ -30,6 +28,9 @@ public class FinalEvaluation {
 
     @Column(name = "overall_comment", nullable = false, columnDefinition = "TEXT")
     private String overallComment;
+
+    @Column(name = "grade")
+    private Double grade = 0.0; // Điểm số chốt cuối cùng
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -50,6 +51,6 @@ public class FinalEvaluation {
     private LocalDateTime updatedAt;
 
     public enum EvaluationStatus {
-        DRAFT, SUBMITTED
+        DRAFT, SUBMITTED, PASS, FAIL
     }
 }

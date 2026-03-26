@@ -38,19 +38,24 @@ public interface InternshipProfileRepository extends JpaRepository<InternshipPro
     List<InternshipProfile> findByMentorId(Long mentorId);
 
     
-        List<InternshipProfile> findByManagerId(Long managerId);
-    
-        @Query("""
-            SELECT p FROM InternshipProfile p
-            JOIN FETCH p.user u
-            LEFT JOIN FETCH u.department
-            LEFT JOIN FETCH p.university
-            LEFT JOIN FETCH p.position pos
-            LEFT JOIN FETCH pos.department
-            LEFT JOIN FETCH p.mentor
-            LEFT JOIN FETCH p.manager
-            WHERE p.user.id = :userId
-        """)
-        Optional<InternshipProfile> findByUserId(@Param("userId") Long userId);
-    }
+    List<InternshipProfile> findByManagerId(Long managerId);
+
+    @Query("""
+        SELECT p FROM InternshipProfile p
+        JOIN FETCH p.user u
+        LEFT JOIN FETCH u.department
+        LEFT JOIN FETCH p.university
+        LEFT JOIN FETCH p.position pos
+        LEFT JOIN FETCH pos.department
+        LEFT JOIN FETCH p.mentor
+        LEFT JOIN FETCH p.manager
+        WHERE p.user.id = :userId
+    """)
+    Optional<InternshipProfile> findByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT p FROM InternshipProfile p " +
+       "JOIN FETCH p.user " +
+       "LEFT JOIN FETCH p.position")
+    List<InternshipProfile> findAllWithUserAndPosition();
+}
     

@@ -68,7 +68,7 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
             response.setInternName(eval.getIntern().getName());
             response.setInternEmail(eval.getIntern().getEmail());
             response.setOverallComment(eval.getOverallComment());
-            response.setStatus(eval.getStatus().name());
+            response.setStatus(eval.getStatus() != null ? eval.getStatus().toString() : null);
             response.setIsLocked(eval.getIsLocked());
             response.setSubmittedAt(eval.getSubmittedAt());
             response.setCreatedAt(eval.getCreatedAt());
@@ -220,7 +220,7 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
         response.setMentorId(eval.getMentor().getId());
         response.setMentorName(eval.getMentor().getName());
         response.setOverallComment(eval.getOverallComment());
-        response.setStatus(eval.getStatus().name());
+        response.setStatus(eval.getStatus() != null ? eval.getStatus().toString() : null);
         response.setIsLocked(eval.getIsLocked());
         response.setSubmittedAt(eval.getSubmittedAt());
         response.setCreatedAt(eval.getCreatedAt());

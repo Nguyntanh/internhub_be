@@ -1,24 +1,20 @@
 package com.example.internhub_be.service;
 
+import com.example.internhub_be.domain.FinalEvaluation;
 import com.example.internhub_be.domain.InternshipProfile;
 import com.example.internhub_be.domain.MicroTask;
 import com.example.internhub_be.exception.ResourceNotFoundException;
-import com.example.internhub_be.payload.response.InternDashboardResponse;
-import com.example.internhub_be.payload.response.MilestoneResponse;
-import com.example.internhub_be.payload.response.SkillResponse;
-import com.example.internhub_be.payload.response.TaskResponse;
-import com.example.internhub_be.repository.InternshipMilestoneRepository;
-import com.example.internhub_be.repository.InternshipProfileRepository;
-import com.example.internhub_be.repository.MicroTaskRepository;
+import com.example.internhub_be.payload.response.*;
+import com.example.internhub_be.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.Arrays;
 
 @Service
 @RequiredArgsConstructor
@@ -27,38 +23,33 @@ public class DashboardServiceImpl implements DashboardService {
     private final InternshipProfileRepository internshipProfileRepository;
     private final MicroTaskRepository microTaskRepository;
     private final InternshipMilestoneRepository internshipMilestoneRepository;
+    private final FinalEvaluationRepository finalEvaluationRepository;
 
     @Override
-    public InternDashboardResponse getInternDashboard(Long internId) {
-        InternshipProfile internProfile = internshipProfileRepository.findByUserId(internId)
-                .orElseThrow(() -> new ResourceNotFoundException("InternshipProfile", "internId", internId));
+    public InternDashboardResponse getInternDashboard(Long userId) {
+        InternshipProfile internProfile = internshipProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("InternshipProfile", "userId", userId));
 
         // Overview
-        String positionName = internProfile.getPosition() != null ? internProfile.getPosition().getName() : "N/A";
-        String mentorName = internProfile.getMentor() != null ? internProfile.getMentor().getName() : "N/A";
+        String positionName = internProfile.getPosition() != null 
+                ? internProfile.getPosition().getName() : "N/A";
+        String mentorName = internProfile.getMentor() != null 
+                ? internProfile.getMentor().getName() : "N/A";
 
         long daysRemaining = 0;
         if (internProfile.getEndDate() != null) {
-            // Calculate days remaining from today to the end date of the internship
             daysRemaining = ChronoUnit.DAYS.between(LocalDate.now(), internProfile.getEndDate());
-            if (daysRemaining < 0) { // If end date has passed
-                daysRemaining = 0;
-            }
+            daysRemaining = Math.max(0, daysRemaining);
         }
 
-        // Target Skills - As discussed, InternshipPosition does not directly link to skills.
-        // This section needs clarification on how target skills are determined for an InternshipPosition.
-        // For now, it returns an empty list.
-        List<SkillResponse> targetSkills = Collections.emptyList();
-        // Example if InternshipPosition had a getSkills() method:
-        // List<SkillResponse> targetSkills = internProfile.getPosition().getSkills().stream()
-        //         .map(skill -> SkillResponse.builder().id(skill.getId()).name(skill.getName()).build())
-        //         .collect(Collectors.toList());
-
-
-        // Tasks (Open or In_Progress)
-        List<MicroTask.MicroTaskStatus> desiredStatuses = Arrays.asList(MicroTask.MicroTaskStatus.Todo, MicroTask.MicroTaskStatus.In_Progress);
-        List<TaskResponse> tasks = microTaskRepository.findByInternIdAndStatusIn(internId, desiredStatuses).stream()
+        // Tasks cho Intern Dashboard (Đang làm)
+        List<MicroTask.MicroTaskStatus> activeStatuses = Arrays.asList(
+                MicroTask.MicroTaskStatus.Todo, 
+                MicroTask.MicroTaskStatus.In_Progress
+        );
+        
+        List<TaskResponse> tasks = microTaskRepository.findByInternIdAndStatusIn(userId, activeStatuses)
+                .stream()
                 .map(task -> TaskResponse.builder()
                         .id(task.getId())
                         .title(task.getTitle())
@@ -71,25 +62,57 @@ public class DashboardServiceImpl implements DashboardService {
         // Roadmap
         List<MilestoneResponse> roadmap = Collections.emptyList();
         if (internProfile.getPosition() != null) {
-            roadmap = internshipMilestoneRepository.findByPositionIdOrderByOrderIndexAsc(internProfile.getPosition().getId()).stream()
-                    .map(milestone -> MilestoneResponse.builder()
-                            .id(milestone.getId())
-                            .title(milestone.getTitle())
-                            .description(milestone.getDescription())
-                            .orderIndex(milestone.getOrderIndex())
-                            // Status for milestone is not directly available in entity, omitting for now.
+            roadmap = internshipMilestoneRepository.findByPositionIdOrderByOrderIndexAsc(internProfile.getPosition().getId())
+                    .stream()
+                    .map(m -> MilestoneResponse.builder()
+                            .id(m.getId())
+                            .title(m.getTitle())
+                            .description(m.getDescription())
+                            .orderIndex(m.getOrderIndex())
                             .build())
                     .collect(Collectors.toList());
         }
-
 
         return InternDashboardResponse.builder()
                 .positionName(positionName)
                 .mentorName(mentorName)
                 .daysRemaining(daysRemaining)
-                .targetSkills(targetSkills)
+                .targetSkills(Collections.emptyList())
                 .tasks(tasks)
                 .roadmap(roadmap)
                 .build();
+    }
+
+    @Override
+    public List<ManagerInternSummaryResponse> getManagerDashboard() {
+        // Tối ưu: Lấy tất cả Profile. Lưu ý: Nên dùng JPA Fetch Join trong Repository để tránh N+1
+        List<InternshipProfile> profiles = internshipProfileRepository.findAll();
+
+        return profiles.stream().map(profile -> {
+            Long userId = profile.getUser().getId();
+            
+            // 1. Tính toán tỷ lệ hoàn thành (Dựa trên status 'Reviewed' trong DB)
+            List<MicroTask> tasks = microTaskRepository.findByInternId(userId);
+            long totalTasks = tasks.size();
+            long completedTasks = tasks.stream()
+                    .filter(t -> t.getStatus() == MicroTask.MicroTaskStatus.Reviewed) 
+                    .count();
+            double completionRate = totalTasks > 0 ? (double) completedTasks / totalTasks * 100 : 0.0;
+
+            // 2. Lấy kết quả đánh giá (GPA chốt)
+            FinalEvaluation evaluation = finalEvaluationRepository.findByInternId(userId)
+                    .orElse(null);
+
+            return ManagerInternSummaryResponse.builder()
+                    .internId(profile.getId())
+                    .fullName(profile.getUser().getName())
+                    .positionName(profile.getPosition() != null ? profile.getPosition().getName() : "N/A")
+                    .gpa(evaluation != null ? evaluation.getGrade() : 0.0)
+                    .status(evaluation != null ? evaluation.getStatus().name() : "IN_PROGRESS")
+                    .completionRate(Math.round(completionRate * 100.0) / 100.0)
+                    .build();
+        })
+        .sorted((a, b) -> b.getGpa().compareTo(a.getGpa())) // Sắp xếp giảm dần theo GPA
+        .collect(Collectors.toList());
     }
 }
