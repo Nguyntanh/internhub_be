@@ -87,6 +87,11 @@ public class SecurityConfig {
                         // ── Radar Analytics ───────────────────────────────────────────
                         .requestMatchers(HttpMethod.GET, "/api/radar/**").authenticated()
 
+                        // ── Manager Review ───────────────────────────────────────────
+                        .requestMatchers("/api/manager/reviews/**").hasAnyRole("MANAGER", "ADMIN")
+                        // ── Notifications ─────────────────────────────────────────────
+                        .requestMatchers("/api/notifications/**").authenticated()
+
                         // ── Mọi request khác: phải đăng nhập ─────────────────────────
                         .anyRequest().authenticated()
                 );

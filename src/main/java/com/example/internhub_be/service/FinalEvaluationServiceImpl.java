@@ -2,6 +2,7 @@ package com.example.internhub_be.service;
 
 import com.example.internhub_be.domain.FinalEvaluation;
 import com.example.internhub_be.domain.MicroTask;
+import com.example.internhub_be.domain.Notification;
 import com.example.internhub_be.domain.TaskSkillRating;
 import com.example.internhub_be.domain.User;
 import com.example.internhub_be.exception.ResourceNotFoundException;
@@ -33,6 +34,8 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
     private final InternshipProfileRepository internshipProfileRepository;
     private final MicroTaskRepository microTaskRepository;
     private final TaskSkillRatingRepository ratingRepository;
+    // ── THÊM MỚI: inject NotificationService để gửi thông báo cho Manager ──
+    private final NotificationService notificationService;
 
     // ─── GET MY INTERNS ───────────────────────────────────────────────────────
 
@@ -101,8 +104,6 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
         FinalEvaluation evaluation = evaluationRepository.findByInternId(request.getInternId())
                 .orElse(new FinalEvaluation());
 
-        // FIXED: Chỉ chặn khi isLocked=true.
-        // Sau khi reset, isLocked=false nên cho phép lưu draft dù status cũ là SUBMITTED.
         if (evaluation.getId() != null && Boolean.TRUE.equals(evaluation.getIsLocked())) {
             throw new IllegalStateException("Đánh giá đang bị khóa. Hãy dùng 'Đánh giá lại' để mở khóa trước.");
         }
@@ -134,7 +135,6 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
             throw new SecurityException("Bạn không có quyền gửi phê duyệt đánh giá này.");
         }
 
-        // FIXED: kiểm tra isLocked thay vì status để tránh conflict với reset flow
         if (Boolean.TRUE.equals(evaluation.getIsLocked())) {
             throw new IllegalStateException("Đánh giá này đã được khóa. Dùng 'Đánh giá lại' để mở khóa trước.");
         }
@@ -148,6 +148,10 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
         evaluation.setSubmittedAt(LocalDateTime.now());
 
         FinalEvaluation saved = evaluationRepository.save(evaluation);
+
+        // ── THÊM MỚI: Gửi thông báo tới tất cả Manager sau khi submit ────────
+        notifyManagers(saved, mentor);
+
         return mapToResponseFull(saved);
     }
 
@@ -172,6 +176,31 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
 
         FinalEvaluation saved = evaluationRepository.save(evaluation);
         return mapToResponseFull(saved);
+    }
+
+    // ─── THÊM MỚI: Gửi thông báo tới tất cả Manager ─────────────────────────
+
+    private void notifyManagers(FinalEvaluation evaluation, User mentor) {
+        List<User> managers = userRepository.findByRole_Name("MANAGER");
+        if (managers.isEmpty()) return;
+
+        User intern = evaluation.getIntern();
+        String title = "Có đánh giá mới cần xem xét";
+        String message = String.format(
+                "Mentor %s vừa gửi đánh giá cuối kỳ cho intern %s. Vui lòng xem xét và ra quyết định.",
+                mentor.getName(), intern.getName());
+
+        for (User manager : managers) {
+            notificationService.createNotification(
+                    manager,
+                    mentor,
+                    Notification.NotificationType.EVALUATION_SUBMITTED,
+                    title,
+                    message,
+                    evaluation.getId(),
+                    "FinalEvaluation"
+            );
+        }
     }
 
     // ─── HELPERS ──────────────────────────────────────────────────────────────
