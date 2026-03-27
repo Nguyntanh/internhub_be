@@ -9,7 +9,10 @@ import com.example.internhub_be.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xddf.usermodel.XDDFColor;
+import org.apache.poi.xddf.usermodel.XDDFSolidFillProperties;
+import org.apache.poi.xddf.usermodel.chart.*;
+import org.apache.poi.xssf.usermodel.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,9 +20,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.apache.poi.xddf.usermodel.XDDFColor;
+import org.apache.poi.xddf.usermodel.XDDFShapeProperties;
+import org.apache.poi.xddf.usermodel.XDDFSolidFillProperties;
 
 @Service
 @RequiredArgsConstructor
@@ -40,8 +45,23 @@ public class ExportServiceImpl implements ExportService {
         User intern = userRepository.findById(internId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy intern ID: " + internId));
 
-        FinalEvaluationResponse eval = evaluationService.getEvaluationByIntern(internId);
-        RadarAnalyticsResponse radar = radarAnalyticsService.getRadarByIntern(internId, requesterEmail);
+        FinalEvaluationResponse eval;
+        try {
+            eval = evaluationService.getEvaluationByIntern(internId);
+        } catch (Exception e) {
+            eval = new FinalEvaluationResponse();
+            eval.setInternId(internId);
+            eval.setInternName(intern.getName());
+            eval.setInternEmail(intern.getEmail());
+        }
+
+        RadarAnalyticsResponse radar = null;
+        try {
+            radar = radarAnalyticsService.getRadarByIntern(internId, requesterEmail);
+        } catch (Exception ignored) {
+            // Radar data unavailable for this user (not INTERN or no access)
+        }
+
         Optional<InternshipProfile> profileOpt = profileRepository.findByUserId(internId);
 
         try (XSSFWorkbook wb = new XSSFWorkbook()) {
@@ -72,7 +92,8 @@ public class ExportServiceImpl implements ExportService {
 
             addLabelValue(sheet, rowNum++, "Họ và tên", intern.getName(), labelStyle, valueStyle);
             addLabelValue(sheet, rowNum++, "Email", intern.getEmail(), labelStyle, valueStyle);
-            addLabelValue(sheet, rowNum++, "Số điện thoại", intern.getPhone() != null ? intern.getPhone() : "—", labelStyle, valueStyle);
+            addLabelValue(sheet, rowNum++, "Số điện thoại",
+                    intern.getPhone() != null ? intern.getPhone() : "—", labelStyle, valueStyle);
 
             if (profileOpt.isPresent()) {
                 InternshipProfile p = profileOpt.get();
@@ -99,7 +120,7 @@ public class ExportServiceImpl implements ExportService {
 
             rowNum++;
 
-            // ── 2. Biểu đồ năng lực (bảng điểm kỹ năng) ────────────────────
+            // ── 2. Biểu đồ năng lực (bảng điểm kỹ năng + biểu đồ cột) ────────
             addSectionHeader(sheet, rowNum++, "II. BIỂU ĐỒ NĂNG LỰC", sectionStyle);
 
             // Header bảng kỹ năng
@@ -111,19 +132,23 @@ public class ExportServiceImpl implements ExportService {
                 c.setCellStyle(headerStyle);
             }
 
-            if (radar.getSkillScores() != null) {
+            int skillDataStartRow = rowNum;
+            int skillCount = 0;
+
+            if (radar != null && radar.getSkillScores() != null) {
                 for (RadarAnalyticsResponse.SkillScore s : radar.getSkillScores()) {
                     Row r = sheet.createRow(rowNum++);
-                    r.createCell(0).setCellValue(s.getSkillName());
+                    r.createCell(0).setCellValue(s.getSkillName() != null ? s.getSkillName() : "");
                     r.createCell(1).setCellValue(s.getScore() != null ? s.getScore().doubleValue() : 0);
                     double bm = radar.getBenchmarkScores() == null ? 7.0 :
                             radar.getBenchmarkScores().stream()
                                     .filter(b -> b.getSkillId().equals(s.getSkillId()))
-                                    .map(b -> b.getBenchmarkScore().doubleValue())
+                                    .map(b -> b.getBenchmarkScore() != null ? b.getBenchmarkScore().doubleValue() : 7.0)
                                     .findFirst().orElse(7.0);
                     r.createCell(2).setCellValue(bm);
                     r.createCell(3).setCellValue(s.getTaskCount() != null ? s.getTaskCount() : 0);
                     r.createCell(4).setCellValue(s.getTotalWeight() != null ? s.getTotalWeight() : 0);
+                    skillCount++;
                 }
             }
 
@@ -133,16 +158,24 @@ public class ExportServiceImpl implements ExportService {
             ovLabel.setCellValue("Điểm tổng thể");
             ovLabel.setCellStyle(labelStyle);
             Cell ovVal = overallRow.createCell(1);
-            ovVal.setCellValue(radar.getOverallScore() != null ? radar.getOverallScore().doubleValue() : 0);
+            ovVal.setCellValue(radar != null && radar.getOverallScore() != null
+                    ? radar.getOverallScore().doubleValue() : 0);
             ovVal.setCellStyle(valueStyle);
 
             Row taskRow = sheet.createRow(rowNum++);
             Cell tkLabel = taskRow.createCell(0);
             tkLabel.setCellValue("Task hoàn thành / Tổng");
             tkLabel.setCellStyle(labelStyle);
-            taskRow.createCell(1).setCellValue(
-                    (radar.getTotalTasksReviewed() != null ? radar.getTotalTasksReviewed() : 0)
-                            + " / " + (radar.getTotalTasksAll() != null ? radar.getTotalTasksAll() : 0));
+            int reviewed = radar != null && radar.getTotalTasksReviewed() != null ? radar.getTotalTasksReviewed() : 0;
+            int totalAll = radar != null && radar.getTotalTasksAll() != null ? radar.getTotalTasksAll() : 0;
+            taskRow.createCell(1).setCellValue(reviewed + " / " + totalAll);
+
+            // ── Thêm biểu đồ cột so sánh điểm thực tế vs Benchmark ──────────
+            if (skillCount > 0 && radar != null && radar.getSkillScores() != null) {
+                rowNum += 2;
+                addBarChart(wb, sheet, radar, skillDataStartRow, skillCount, rowNum);
+                rowNum += 18; // reserved space for chart
+            }
 
             rowNum++;
 
@@ -194,7 +227,6 @@ public class ExportServiceImpl implements ExportService {
     @Transactional(readOnly = true)
     public byte[] exportGroupReport(Long departmentId, Long universityId, String requesterEmail) throws IOException {
 
-        // Lấy danh sách profiles phù hợp bộ lọc
         List<InternshipProfile> profiles = profileRepository.findAllWithRelations();
 
         if (departmentId != null) {
@@ -259,7 +291,6 @@ public class ExportServiceImpl implements ExportService {
                         ? p.getPosition().getDepartment().getName() : "—");
                 row.createCell(7).setCellValue(p.getMentor() != null ? p.getMentor().getName() : "—");
 
-                // Điểm tổng từ radar
                 double overallScore = 0;
                 try {
                     RadarAnalyticsResponse radar = radarAnalyticsService.getRadarByIntern(intern.getId(), requesterEmail);
@@ -273,6 +304,61 @@ public class ExportServiceImpl implements ExportService {
             wb.write(out);
             return out.toByteArray();
         }
+    }
+
+    // ─── Bar Chart ───────────────────────────────────────────────────────────
+
+    private void addBarChart(XSSFWorkbook wb, Sheet sheet, RadarAnalyticsResponse radar,
+                             int dataStartRow, int skillCount, int chartRow) {
+        XSSFSheet xssfSheet = (XSSFSheet) sheet;
+        XSSFDrawing drawing = xssfSheet.createDrawingPatriarch();
+        XSSFClientAnchor anchor = drawing.createAnchor(0, 0, 0, 0, 0, chartRow, 5, chartRow + 16);
+
+        XSSFChart chart = drawing.createChart(anchor);
+        chart.setTitleText("Biểu đồ năng lực: Thực tế vs Benchmark");
+        chart.setTitleOverlay(false);
+
+        XDDFChartLegend legend = chart.getOrAddLegend();
+        legend.setPosition(LegendPosition.BOTTOM);
+
+        XDDFCategoryAxis bottomAxis = chart.createCategoryAxis(AxisPosition.BOTTOM);
+        bottomAxis.setTitle("Kỹ năng");
+        XDDFValueAxis leftAxis = chart.createValueAxis(AxisPosition.LEFT);
+        leftAxis.setTitle("Điểm số (0–10)");
+        leftAxis.setCrosses(AxisCrosses.AUTO_ZERO);
+        leftAxis.setMinimum(0);
+        leftAxis.setMaximum(10);
+
+        XDDFDataSource<String> categories = XDDFDataSourcesFactory.fromStringCellRange(
+                xssfSheet, new CellRangeAddress(dataStartRow, dataStartRow + skillCount - 1, 0, 0));
+
+        XDDFNumericalDataSource<Double> actualData = XDDFDataSourcesFactory.fromNumericCellRange(
+                xssfSheet, new CellRangeAddress(dataStartRow, dataStartRow + skillCount - 1, 1, 1));
+
+        XDDFNumericalDataSource<Double> benchmarkData = XDDFDataSourcesFactory.fromNumericCellRange(
+                xssfSheet, new CellRangeAddress(dataStartRow, dataStartRow + skillCount - 1, 2, 2));
+
+        XDDFBarChartData data = (XDDFBarChartData) chart.createData(
+                ChartTypes.BAR, bottomAxis, leftAxis);
+        data.setBarDirection(BarDirection.COL);
+
+        // Series 1: Actual scores (blue #3B82F6)
+        XDDFBarChartData.Series series1 = (XDDFBarChartData.Series) data.addSeries(categories, actualData);
+        series1.setTitle("Điểm thực tế", null);
+        XDDFShapeProperties props1 = new XDDFShapeProperties();
+        props1.setFillProperties(new XDDFSolidFillProperties(
+                XDDFColor.from(new byte[]{0x3B, (byte) 0x82, (byte) 0xF6})));
+        series1.setShapeProperties(props1);
+
+        // Series 2: Benchmark (orange #F97316)
+        XDDFBarChartData.Series series2 = (XDDFBarChartData.Series) data.addSeries(categories, benchmarkData);
+        series2.setTitle("Benchmark", null);
+        XDDFShapeProperties props2 = new XDDFShapeProperties();
+        props2.setFillProperties(new XDDFSolidFillProperties(
+                XDDFColor.from(new byte[]{(byte) 0xF9, 0x73, 0x16})));
+        series2.setShapeProperties(props2);
+
+        chart.plot(data);
     }
 
     // ─── Style helpers ────────────────────────────────────────────────────────

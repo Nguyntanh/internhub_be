@@ -39,22 +39,14 @@ public class DashboardServiceImpl implements DashboardService {
 
         long daysRemaining = 0;
         if (internProfile.getEndDate() != null) {
-            // Calculate days remaining from today to the end date of the internship
             daysRemaining = ChronoUnit.DAYS.between(LocalDate.now(), internProfile.getEndDate());
-            if (daysRemaining < 0) { // If end date has passed
+            if (daysRemaining < 0) {
                 daysRemaining = 0;
             }
         }
 
-        // Target Skills - As discussed, InternshipPosition does not directly link to skills.
-        // This section needs clarification on how target skills are determined for an InternshipPosition.
-        // For now, it returns an empty list.
+        // Target Skills
         List<SkillResponse> targetSkills = Collections.emptyList();
-        // Example if InternshipPosition had a getSkills() method:
-        // List<SkillResponse> targetSkills = internProfile.getPosition().getSkills().stream()
-        //         .map(skill -> SkillResponse.builder().id(skill.getId()).name(skill.getName()).build())
-        //         .collect(Collectors.toList());
-
 
         // Tasks (Open or In_Progress)
         List<MicroTask.MicroTaskStatus> desiredStatuses = Arrays.asList(MicroTask.MicroTaskStatus.Todo, MicroTask.MicroTaskStatus.In_Progress);
@@ -77,13 +69,13 @@ public class DashboardServiceImpl implements DashboardService {
                             .title(milestone.getTitle())
                             .description(milestone.getDescription())
                             .orderIndex(milestone.getOrderIndex())
-                            // Status for milestone is not directly available in entity, omitting for now.
                             .build())
                     .collect(Collectors.toList());
         }
 
-
         return InternDashboardResponse.builder()
+                .userId(internProfile.getUser() != null ? internProfile.getUser().getId() : null)
+                .internName(internProfile.getUser() != null ? internProfile.getUser().getName() : "N/A")
                 .positionName(positionName)
                 .mentorName(mentorName)
                 .daysRemaining(daysRemaining)
