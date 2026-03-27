@@ -182,6 +182,12 @@ public class FinalEvaluationServiceImpl implements FinalEvaluationService {
 
     private void notifyManagers(FinalEvaluation evaluation, User mentor) {
         List<User> managers = userRepository.findByRole_Name("MANAGER");
+        if (managers.isEmpty()) {
+            managers = userRepository.findByRole_Name("ROLE_MANAGER");
+        }
+        if (managers.isEmpty()) {
+            managers = userRepository.findByRole_NameIgnoreCase("MANAGER");
+        }
         if (managers.isEmpty()) return;
 
         User intern = evaluation.getIntern();

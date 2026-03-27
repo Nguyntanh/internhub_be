@@ -48,17 +48,49 @@ public class ManagerReviewServiceImpl implements ManagerReviewService {
                     // Chỉ lấy hồ sơ chưa có quyết định
                     Optional<InternshipProfile> profileOpt =
                             profileRepository.findByUserId(eval.getIntern().getId());
-                    return profileOpt.isPresent()
-                            && !decisionRepository.existsByInternshipProfileId(profileOpt.get().getId());
+                    return profileOpt.map(profile ->
+                            !decisionRepository.existsByInternshipProfileId(profile.getId())
+                    ).orElse(true); // nếu chưa có profile, vẫn cho hiện
                 })
                 .map(eval -> {
                     Optional<InternshipProfile> profileOpt =
                             profileRepository.findByUserId(eval.getIntern().getId());
-                    if (profileOpt.isEmpty()) return null;
+                    if (profileOpt.isEmpty()) {
+                        // Nếu profile chưa có, vẫn hiển thị ít nhất thông tin intern để manager biết
+                        return buildResponseForMissingProfile(eval);
+                    }
                     return buildResponse(profileOpt.get(), eval);
                 })
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+
+    private ManagerReviewResponse buildResponseForMissingProfile(FinalEvaluation eval) {
+        // Fallback nếu không tìm được InternshipProfile (chỉ trong trường hợp hiếm)
+        return ManagerReviewResponse.builder()
+                .internId(eval.getIntern().getId())
+                .internName(eval.getIntern().getName())
+                .internEmail(eval.getIntern().getEmail())
+                .internshipProfileId(null)
+                .positionName(null)
+                .departmentName(null)
+                .startDate(null)
+                .endDate(null)
+                .internshipStatus(null)
+                .mentorId(eval.getMentor().getId())
+                .mentorName(eval.getMentor().getName())
+                .mentorEmail(eval.getMentor().getEmail())
+                .evaluationId(eval.getId())
+                .overallComment(eval.getOverallComment())
+                .evaluationStatus(eval.getStatus().name())
+                .evaluationSubmittedAt(eval.getSubmittedAt())
+                .skillSummaries(new ArrayList<>())
+                .overallScore(BigDecimal.ZERO)
+                .totalTasksAll(0)
+                .totalTasksReviewed(0)
+                .taskHistory(new ArrayList<>())
+                .currentDecision(null)
+                .build();
     }
 
     // ─── CHI TIẾT BÁO CÁO ────────────────────────────────────────────────
@@ -282,9 +314,19 @@ public class ManagerReviewServiceImpl implements ManagerReviewService {
     private void notifyHR(InternshipDecision decision,
                           InternshipProfile profile,
                           User manager) {
-        // Tìm tất cả user có role HR để gửi thông báo
+        // Tìm tất cả user có role HR, đồng thời hỗ trợ nhiều biến thể role name
         List<User> hrUsers = userRepository.findByRole_Name("HR");
-        if (hrUsers.isEmpty()) return;
+        if (hrUsers.isEmpty()) {
+            hrUsers = userRepository.findByRole_Name("ROLE_HR");
+        }
+        if (hrUsers.isEmpty()) {
+            hrUsers = userRepository.findByRole_NameIgnoreCase("HR");
+        }
+
+        // Nếu thật sự không tìm được HR nào, không can thiệp tiếp, và đánh dấu vẫn false
+        if (hrUsers.isEmpty()) {
+            return;
+        }
 
         String internName = profile.getUser().getName();
         String decisionLabel = switch (decision.getDecision()) {
@@ -332,7 +374,13 @@ public class ManagerReviewServiceImpl implements ManagerReviewService {
 
     private void validateManagerRole(User user) {
         String role = user.getRole() != null ? user.getRole().getName() : "";
-        if (!"MANAGER".equals(role) && !"ADMIN".equals(role)) {
+        String normalizedRole = role.trim().toUpperCase(Locale.ROOT);
+
+        if (normalizedRole.startsWith("ROLE_")) {
+            normalizedRole = normalizedRole.substring("ROLE_".length());
+        }
+
+        if (!"MANAGER".equals(normalizedRole) && !"ADMIN".equals(normalizedRole)) {
             throw new AccessDeniedException("Chỉ Manager hoặc Admin mới có quyền thực hiện chức năng này.");
         }
     }
