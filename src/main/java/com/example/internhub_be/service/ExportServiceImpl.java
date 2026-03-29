@@ -9,8 +9,6 @@ import com.example.internhub_be.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
-import org.apache.poi.xddf.usermodel.XDDFColor;
-import org.apache.poi.xddf.usermodel.XDDFSolidFillProperties;
 import org.apache.poi.xddf.usermodel.chart.*;
 import org.apache.poi.xssf.usermodel.*;
 import org.springframework.stereotype.Service;
@@ -18,13 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
-import org.apache.poi.xddf.usermodel.XDDFColor;
-import org.apache.poi.xddf.usermodel.XDDFShapeProperties;
-import org.apache.poi.xddf.usermodel.XDDFSolidFillProperties;
 
 @Service
 @RequiredArgsConstructor
@@ -139,15 +133,16 @@ public class ExportServiceImpl implements ExportService {
                 for (RadarAnalyticsResponse.SkillScore s : radar.getSkillScores()) {
                     Row r = sheet.createRow(rowNum++);
                     r.createCell(0).setCellValue(s.getSkillName() != null ? s.getSkillName() : "");
-                    r.createCell(1).setCellValue(s.getScore() != null ? s.getScore().doubleValue() : 0);
+                    r.createCell(1).setCellValue(s.getScore() != null ? s.getScore().doubleValue() : 0.0);
                     double bm = radar.getBenchmarkScores() == null ? 7.0 :
                             radar.getBenchmarkScores().stream()
                                     .filter(b -> b.getSkillId().equals(s.getSkillId()))
-                                    .map(b -> b.getBenchmarkScore() != null ? b.getBenchmarkScore().doubleValue() : 7.0)
+                                    .mapToDouble(b -> b.getBenchmarkScore() != null
+                                            ? b.getBenchmarkScore().doubleValue() : 7.0)
                                     .findFirst().orElse(7.0);
                     r.createCell(2).setCellValue(bm);
-                    r.createCell(3).setCellValue(s.getTaskCount() != null ? s.getTaskCount() : 0);
-                    r.createCell(4).setCellValue(s.getTotalWeight() != null ? s.getTotalWeight() : 0);
+                    r.createCell(3).setCellValue(s.getTaskCount());
+                    r.createCell(4).setCellValue(s.getTotalWeight());
                     skillCount++;
                 }
             }
@@ -159,15 +154,15 @@ public class ExportServiceImpl implements ExportService {
             ovLabel.setCellStyle(labelStyle);
             Cell ovVal = overallRow.createCell(1);
             ovVal.setCellValue(radar != null && radar.getOverallScore() != null
-                    ? radar.getOverallScore().doubleValue() : 0);
+                    ? radar.getOverallScore().doubleValue() : 0.0);
             ovVal.setCellStyle(valueStyle);
 
             Row taskRow = sheet.createRow(rowNum++);
             Cell tkLabel = taskRow.createCell(0);
             tkLabel.setCellValue("Task hoàn thành / Tổng");
             tkLabel.setCellStyle(labelStyle);
-            int reviewed = radar != null && radar.getTotalTasksReviewed() != null ? radar.getTotalTasksReviewed() : 0;
-            int totalAll = radar != null && radar.getTotalTasksAll() != null ? radar.getTotalTasksAll() : 0;
+            int reviewed = radar != null ? radar.getTotalTasksReviewed() : 0;
+            int totalAll = radar != null ? radar.getTotalTasksAll() : 0;
             taskRow.createCell(1).setCellValue(reviewed + " / " + totalAll);
 
             // ── Thêm biểu đồ cột so sánh điểm thực tế vs Benchmark ──────────
@@ -293,8 +288,9 @@ public class ExportServiceImpl implements ExportService {
 
                 double overallScore = 0;
                 try {
-                    RadarAnalyticsResponse radar = radarAnalyticsService.getRadarByIntern(intern.getId(), requesterEmail);
-                    overallScore = radar.getOverallScore() != null ? radar.getOverallScore().doubleValue() : 0;
+                    RadarAnalyticsResponse radar = radarAnalyticsService.getRadarForExport(intern.getId());
+                    overallScore = radar.getOverallScore() != null
+                            ? radar.getOverallScore().doubleValue() : 0.0;
                 } catch (Exception ignored) {}
                 row.createCell(8).setCellValue(overallScore);
                 row.createCell(9).setCellValue(p.getStatus() != null ? p.getStatus().name() : "—");
@@ -324,7 +320,7 @@ public class ExportServiceImpl implements ExportService {
         XDDFCategoryAxis bottomAxis = chart.createCategoryAxis(AxisPosition.BOTTOM);
         bottomAxis.setTitle("Kỹ năng");
         XDDFValueAxis leftAxis = chart.createValueAxis(AxisPosition.LEFT);
-        leftAxis.setTitle("Điểm số (0–10)");
+        leftAxis.setTitle("Điểm số (0-10)");
         leftAxis.setCrosses(AxisCrosses.AUTO_ZERO);
         leftAxis.setMinimum(0);
         leftAxis.setMaximum(10);
@@ -342,21 +338,11 @@ public class ExportServiceImpl implements ExportService {
                 ChartTypes.BAR, bottomAxis, leftAxis);
         data.setBarDirection(BarDirection.COL);
 
-        // Series 1: Actual scores (blue #3B82F6)
-        XDDFBarChartData.Series series1 = (XDDFBarChartData.Series) data.addSeries(categories, actualData);
+        XDDFChartData.Series series1 = data.addSeries(categories, actualData);
         series1.setTitle("Điểm thực tế", null);
-        XDDFShapeProperties props1 = new XDDFShapeProperties();
-        props1.setFillProperties(new XDDFSolidFillProperties(
-                XDDFColor.from(new byte[]{0x3B, (byte) 0x82, (byte) 0xF6})));
-        series1.setShapeProperties(props1);
 
-        // Series 2: Benchmark (orange #F97316)
-        XDDFBarChartData.Series series2 = (XDDFBarChartData.Series) data.addSeries(categories, benchmarkData);
+        XDDFChartData.Series series2 = data.addSeries(categories, benchmarkData);
         series2.setTitle("Benchmark", null);
-        XDDFShapeProperties props2 = new XDDFShapeProperties();
-        props2.setFillProperties(new XDDFSolidFillProperties(
-                XDDFColor.from(new byte[]{(byte) 0xF9, 0x73, 0x16})));
-        series2.setShapeProperties(props2);
 
         chart.plot(data);
     }
