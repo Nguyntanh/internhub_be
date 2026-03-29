@@ -25,4 +25,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // ⭐ Lấy danh sách intern
     List<User> findByRole_Name(String roleName);
+
+    // Hỗ trợ cả trường hợp role = 'HR' hoặc 'ROLE_HR', viết hoa/viết thường khác nhau
+    List<User> findByRole_NameIgnoreCase(String roleName);
 }
