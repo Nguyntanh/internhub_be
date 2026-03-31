@@ -1,5 +1,6 @@
 package com.example.internhub_be.service;
 
+import com.example.internhub_be.domain.InternshipProfile;
 import com.example.internhub_be.domain.MicroTask;
 import com.example.internhub_be.domain.Skill;
 import com.example.internhub_be.domain.TaskSkillRating;
@@ -24,7 +25,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RadarAnalyticsServiceImpl implements RadarAnalyticsService {
 
-    /** Điểm benchmark mặc định — mở rộng sau bằng bảng position_skill_benchmarks */
     private static final BigDecimal DEFAULT_BENCHMARK = new BigDecimal("7.0");
 
     private final UserRepository              userRepository;
@@ -36,44 +36,81 @@ public class RadarAnalyticsServiceImpl implements RadarAnalyticsService {
     @Transactional(readOnly = true)
     public RadarAnalyticsResponse getRadarByIntern(Long internId, String requesterEmail) {
 
-        // 1. Load intern
         User intern = userRepository.findById(internId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", internId));
 
-                String internRole = intern.getRole() != null ? intern.getRole().getName() : "";
-if (!"INTERN".equals(internRole)) {
-    throw new ResourceNotFoundException("Intern", "id", internId);
-}
+        String internRole = intern.getRole() != null ? intern.getRole().getName() : "";
+        if (!"INTERN".equals(internRole)) {
+            throw new ResourceNotFoundException("Intern", "id", internId);
+        }
 
-        // 2. Load requester & kiểm tra quyền
         User requester = userRepository.findByEmail(requesterEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", requesterEmail));
         validateAccess(requester, intern);
 
-        // 3. Thông tin vị trí / phòng ban từ InternshipProfile
+        return buildRadarResponse(intern);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RadarAnalyticsResponse getRadarForExport(Long internId) {
+        User intern = userRepository.findById(internId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", internId));
+        return buildRadarResponse(intern);
+    }
+
+    private RadarAnalyticsResponse buildRadarResponse(User intern) {
+        Long internId = intern.getId();
+
+        Optional<InternshipProfile> profileOpt = profileRepository.findByUserId(internId);
+
+        String universityName = null;
+        String major          = null;
         String positionName   = null;
         String departmentName = null;
+        String status         = null;
+        var    startDate      = (java.time.LocalDate) null;
+        var    endDate        = (java.time.LocalDate) null;
+        Long   mentorId       = null;
+        String mentorName     = null;
+        Long   managerId      = null;
+        String managerName    = null;
 
-        var profileOpt = profileRepository.findByUserId(internId);
         if (profileOpt.isPresent()) {
-            var profile = profileOpt.get();
-            if (profile.getPosition() != null) {
-                positionName = profile.getPosition().getName();
-                if (profile.getPosition().getDepartment() != null) {
-                    departmentName = profile.getPosition().getDepartment().getName();
+            InternshipProfile p = profileOpt.get();
+
+            if (p.getUniversity() != null) {
+                universityName = p.getUniversity().getName();
+            }
+            major = p.getMajor();
+
+            if (p.getPosition() != null) {
+                positionName = p.getPosition().getName();
+                if (p.getPosition().getDepartment() != null) {
+                    departmentName = p.getPosition().getDepartment().getName();
                 }
+            }
+
+            status    = p.getStatus() != null ? p.getStatus().name() : null;
+            startDate = p.getStartDate();
+            endDate   = p.getEndDate();
+
+            if (p.getMentor() != null) {
+                mentorId   = p.getMentor().getId();
+                mentorName = p.getMentor().getName();
+            }
+            if (p.getManager() != null) {
+                managerId   = p.getManager().getId();
+                managerName = p.getManager().getName();
             }
         }
 
-        // 4. Tổng hợp tất cả task của intern
         List<MicroTask> allTasks = microTaskRepository.findByInternId(internId);
         int totalAll      = allTasks.size();
         int totalReviewed = (int) allTasks.stream()
                 .filter(t -> t.getStatus() == MicroTask.MicroTaskStatus.Reviewed)
                 .count();
 
-        // 5. Tổng hợp điểm kỹ năng — chỉ từ task đã Reviewed
-        // key: skillId → SkillAggregator
         Map<Long, SkillAggregator> aggregatorMap = new LinkedHashMap<>();
 
         for (MicroTask task : allTasks) {
@@ -87,26 +124,23 @@ if (!"INTERN".equals(internRole)) {
                 aggregatorMap
                         .computeIfAbsent(skill.getId(), k -> new SkillAggregator(skill))
                         .add(rating.getRatingScore(),
-                             rating.getWeight() != null ? rating.getWeight() : 1);
+                                rating.getWeight() != null ? rating.getWeight() : 1);
             }
         }
 
-        // 6. Build SkillScore list
         List<RadarAnalyticsResponse.SkillScore> skillScores = aggregatorMap.values()
                 .stream()
                 .map(SkillAggregator::toSkillScore)
                 .collect(Collectors.toList());
 
-        // 7. Overall score (trung bình có trọng số toàn bộ)
-        int        totalW   = aggregatorMap.values().stream().mapToInt(a -> a.totalWeight).sum();
-        BigDecimal sumWS    = aggregatorMap.values().stream()
+        int        totalW = aggregatorMap.values().stream().mapToInt(a -> a.totalWeight).sum();
+        BigDecimal sumWS  = aggregatorMap.values().stream()
                 .map(a -> a.weightedScoreSum)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal overallScore = totalW > 0
                 ? sumWS.divide(BigDecimal.valueOf(totalW), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
-        // 8. Benchmark — mặc định 7.0 cho mỗi skill đã được đánh giá
         List<RadarAnalyticsResponse.BenchmarkScore> benchmarks = aggregatorMap.values().stream()
                 .map(agg -> RadarAnalyticsResponse.BenchmarkScore.builder()
                         .skillId(agg.skillId)
@@ -119,8 +153,18 @@ if (!"INTERN".equals(internRole)) {
                 .internId(internId)
                 .internName(intern.getName())
                 .internEmail(intern.getEmail())
+                .phone(intern.getPhone())
+                .universityName(universityName)
+                .major(major)
                 .positionName(positionName)
                 .departmentName(departmentName)
+                .status(status)
+                .startDate(startDate)
+                .endDate(endDate)
+                .mentorId(mentorId)
+                .mentorName(mentorName)
+                .managerId(managerId)
+                .managerName(managerName)
                 .skillScores(skillScores)
                 .benchmarkScores(benchmarks)
                 .totalTasksAll(totalAll)
@@ -129,35 +173,24 @@ if (!"INTERN".equals(internRole)) {
                 .build();
     }
 
-    // ─── Access Control ───────────────────────────────────────────────────────
-
-    /**
-     * Kiểm tra quyền theo role:
-     *   ADMIN / HR  → Full
-     *   MANAGER     → chỉ intern cùng phòng ban
-     *   MENTOR      → chỉ intern mình đang phụ trách (có task được giao)
-     *   INTERN      → chỉ bản thân
-     */
     private void validateAccess(User requester, User intern) {
         String role = requester.getRole() != null ? requester.getRole().getName() : "";
 
         switch (role) {
-            case "ADMIN":
-            case "HR":
-                break; // không hạn chế
+            case "ADMIN", "HR" -> {}
 
-            case "MANAGER":
+            case "MANAGER" -> {
                 boolean sameDept = requester.getDepartment() != null
                         && intern.getDepartment() != null
                         && requester.getDepartment().getId()
-                                .equals(intern.getDepartment().getId());
+                        .equals(intern.getDepartment().getId());
                 if (!sameDept) {
                     throw new AccessDeniedException(
                             "Manager chỉ xem được intern trong phòng ban của mình.");
                 }
-                break;
+            }
 
-            case "MENTOR":
+            case "MENTOR" -> {
                 boolean hasTasks = microTaskRepository.findByInternId(intern.getId())
                         .stream()
                         .anyMatch(t -> t.getMentor() != null
@@ -166,20 +199,17 @@ if (!"INTERN".equals(internRole)) {
                     throw new AccessDeniedException(
                             "Mentor chỉ xem được radar của intern mình phụ trách.");
                 }
-                break;
+            }
 
-            case "INTERN":
+            case "INTERN" -> {
                 if (!requester.getId().equals(intern.getId())) {
                     throw new AccessDeniedException("Intern chỉ xem được radar của chính mình.");
                 }
-                break;
+            }
 
-            default:
-                throw new AccessDeniedException("Không có quyền truy cập.");
+            default -> throw new AccessDeniedException("Không có quyền truy cập.");
         }
     }
-
-    // ─── Inner helper ─────────────────────────────────────────────────────────
 
     private static class SkillAggregator {
         final Long       skillId;

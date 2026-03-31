@@ -1,20 +1,25 @@
 package com.example.internhub_be.payload.response;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class InternDashboardResponse {
     // Overview
+    private Long userId;
+    private String internName;
     private String positionName;
     private String mentorName;
-    private Long daysRemaining; // Number of days remaining until the end date of the internship
+    private Long daysRemaining;
 
-    // Target Skills - Note: This currently assumes a direct link from InternshipPosition to Skill.
-    // If not, this section needs clarification on how target skills are determined for an InternshipPosition.
+    // Target Skills
     private List<SkillResponse> targetSkills;
 
     // Tasks (Open or In_Progress)

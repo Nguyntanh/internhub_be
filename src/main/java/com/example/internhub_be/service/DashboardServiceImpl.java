@@ -44,12 +44,11 @@ public class DashboardServiceImpl implements DashboardService {
 
         // Tasks cho Intern Dashboard (Đang làm)
         List<MicroTask.MicroTaskStatus> activeStatuses = Arrays.asList(
-                MicroTask.MicroTaskStatus.Todo, 
+                MicroTask.MicroTaskStatus.Todo,
                 MicroTask.MicroTaskStatus.In_Progress
         );
-        
-        List<TaskResponse> tasks = microTaskRepository.findByInternIdAndStatusIn(userId, activeStatuses)
-                .stream()
+
+        List<TaskResponse> tasks = microTaskRepository.findByInternIdAndStatusIn(userId, activeStatuses).stream()
                 .map(task -> TaskResponse.builder()
                         .id(task.getId())
                         .title(task.getTitle())
@@ -62,8 +61,7 @@ public class DashboardServiceImpl implements DashboardService {
         // Roadmap
         List<MilestoneResponse> roadmap = Collections.emptyList();
         if (internProfile.getPosition() != null) {
-            roadmap = internshipMilestoneRepository.findByPositionIdOrderByOrderIndexAsc(internProfile.getPosition().getId())
-                    .stream()
+            roadmap = internshipMilestoneRepository.findByPositionIdOrderByOrderIndexAsc(internProfile.getPosition().getId()).stream()
                     .map(m -> MilestoneResponse.builder()
                             .id(m.getId())
                             .title(m.getTitle())
@@ -74,6 +72,8 @@ public class DashboardServiceImpl implements DashboardService {
         }
 
         return InternDashboardResponse.builder()
+                .userId(userId)
+                .internName(internProfile.getUser().getName())
                 .positionName(positionName)
                 .mentorName(mentorName)
                 .daysRemaining(daysRemaining)
@@ -90,12 +90,12 @@ public class DashboardServiceImpl implements DashboardService {
 
         return profiles.stream().map(profile -> {
             Long userId = profile.getUser().getId();
-            
+
             // 1. Tính toán tỷ lệ hoàn thành (Dựa trên status 'Reviewed' trong DB)
             List<MicroTask> tasks = microTaskRepository.findByInternId(userId);
             long totalTasks = tasks.size();
             long completedTasks = tasks.stream()
-                    .filter(t -> t.getStatus() == MicroTask.MicroTaskStatus.Reviewed) 
+                    .filter(t -> t.getStatus() == MicroTask.MicroTaskStatus.Reviewed)
                     .count();
             double completionRate = totalTasks > 0 ? (double) completedTasks / totalTasks * 100 : 0.0;
 

@@ -6,6 +6,6 @@ import com.example.internhub_be.payload.response.ManagerInternSummaryResponse;
 import java.util.List;
 
 public interface DashboardService {
-    InternDashboardResponse getInternDashboard(Long internId);
+    InternDashboardResponse getInternDashboard(Long userId);
     List<ManagerInternSummaryResponse> getManagerDashboard();
 }

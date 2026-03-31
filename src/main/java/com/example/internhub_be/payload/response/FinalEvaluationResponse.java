@@ -9,29 +9,36 @@ import java.util.List;
 @Data
 public class FinalEvaluationResponse {
 
-    private Long id;
-    private Long internId;
+    // ── Identity ──────────────────────────────────────────────────────────────
+    private Long   id;
+    private Long   internId;
     private String internName;
     private String internEmail;
-    private Long mentorId;
+    private Long   mentorId;
     private String mentorName;
-    private String overallComment;
-    private String status;
-    private Boolean isLocked;
+
+    // ── Evaluation content ────────────────────────────────────────────────────
+    private String        overallComment;
+    /** EvaluationStatus enum name: "DRAFT" | "SUBMITTED" */
+    private String        status;
+    private Boolean       isLocked;
     private LocalDateTime submittedAt;
     private LocalDateTime createdAt;
 
-    // Bảng điểm tổng hợp từ các Micro-tasks
-    private List<SkillSummary> skillSummaries;
-    private Integer totalTasksReviewed;
-    private Integer totalTasksAll;
+    // ── Task summary ──────────────────────────────────────────────────────────
+    private int totalTasksAll;
+    private int totalTasksReviewed;
 
+    // ── Skill summaries ───────────────────────────────────────────────────────
+    private List<SkillSummary> skillSummaries;
+
+    // ── Inner DTO ─────────────────────────────────────────────────────────────
     @Data
     public static class SkillSummary {
-        private Long skillId;
-        private String skillName;
-        private BigDecimal averageScore;   // Trung bình có trọng số
-        private Integer totalWeight;
-        private Integer taskCount;
+        private Long       skillId;
+        private String     skillName;
+        private int        totalWeight;
+        private int        taskCount;
+        private BigDecimal averageScore;
     }
 }

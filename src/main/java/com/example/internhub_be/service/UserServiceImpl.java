@@ -107,16 +107,6 @@ public class UserServiceImpl implements UserService {
                 long remaining = ChronoUnit.DAYS.between(today, ip.getEndDate());
                 response.setDaysRemaining(Math.max(0L, remaining));
             }
-
-            // 2. Tính toán Roadmap Milestones dựa trên Position
-            // if (ip.getPosition() != null && ip.getStartDate() != null) {
-            //     List<InternshipMilestone> milestones = milestoneRepository
-            //             .findByPositionIdOrderByOrderIndexAsc(ip.getPosition().getId());
-                
-            //     response.setRoadmap(calculateRoadmap(milestones, ip.getStartDate()));
-            // } else {
-            //     response.setRoadmap(new ArrayList<>());
-            // }
         } else {
             // Trường hợp không có profile
             response.setDaysRemaining(null);
