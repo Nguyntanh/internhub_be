@@ -104,10 +104,10 @@ public class DashboardServiceImpl implements DashboardService {
                     .orElse(null);
 
             return ManagerInternSummaryResponse.builder()
-                    .internId(profile.getId())
+                    .internId(userId)
                     .fullName(profile.getUser().getName())
                     .positionName(profile.getPosition() != null ? profile.getPosition().getName() : "N/A")
-                    .gpa(evaluation != null ? evaluation.getGrade() : 0.0)
+                    .gpa(evaluation != null && evaluation.getGrade() != null ? evaluation.getGrade() : 0.0)
                     .status(evaluation != null ? evaluation.getStatus().name() : "IN_PROGRESS")
                     .completionRate(Math.round(completionRate * 100.0) / 100.0)
                     .build();

@@ -201,11 +201,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<User> getUsersByRole(String roleName) {
-
         return userRepository.findAll()
                 .stream()
-                .filter(u -> u.getRole() != null &&
-                        roleName.equalsIgnoreCase(u.getRole().getName()))
+                .filter(u -> u.getRole() != null && 
+                        (roleName.equalsIgnoreCase(u.getRole().getName()) || 
+                         ("ROLE_" + roleName).equalsIgnoreCase(u.getRole().getName())))
                 .toList();
     }
 
