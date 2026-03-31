@@ -203,9 +203,12 @@ public class UserServiceImpl implements UserService {
     public List<User> getUsersByRole(String roleName) {
         return userRepository.findAll()
                 .stream()
-                .filter(u -> u.getRole() != null && 
-                        (roleName.equalsIgnoreCase(u.getRole().getName()) || 
-                         ("ROLE_" + roleName).equalsIgnoreCase(u.getRole().getName())))
+                .filter(u -> {
+                    if (u.getRole() == null) return false;
+                    String name = u.getRole().getName().toUpperCase();
+                    String target = roleName.toUpperCase();
+                    return name.equals(target) || name.equals("ROLE_" + target);
+                })
                 .toList();
     }
 

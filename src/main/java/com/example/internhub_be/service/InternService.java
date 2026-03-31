@@ -59,7 +59,7 @@ public class InternService {
         user.setPhone(req.getPhone());
         user.setPassword(UUID.randomUUID().toString());
         user.setRole(internRole);
-        user.setIsActive(false);
+        user.setIsActive(true);
         user.setActivationToken(UUID.randomUUID().toString());
         user.setCreatedAt(LocalDateTime.now());
 

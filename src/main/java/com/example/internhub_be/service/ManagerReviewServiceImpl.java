@@ -314,16 +314,11 @@ public class ManagerReviewServiceImpl implements ManagerReviewService {
     private void notifyHR(InternshipDecision decision,
                           InternshipProfile profile,
                           User manager) {
-        // Tìm tất cả user có role HR, đồng thời hỗ trợ nhiều biến thể role name
-        List<User> hrUsers = userRepository.findByRole_Name("HR");
-        if (hrUsers.isEmpty()) {
-            hrUsers = userRepository.findByRole_Name("ROLE_HR");
-        }
-        if (hrUsers.isEmpty()) {
-            hrUsers = userRepository.findByRole_NameIgnoreCase("HR");
-        }
+        // Sử dụng một logic tìm kiếm Role đồng nhất
+        List<User> hrUsers = userRepository.findAll().stream()
+                .filter(u -> u.getRole() != null && u.getRole().getName().toUpperCase().contains("HR"))
+                .toList();
 
-        // Nếu thật sự không tìm được HR nào, không can thiệp tiếp, và đánh dấu vẫn false
         if (hrUsers.isEmpty()) {
             return;
         }
@@ -373,15 +368,13 @@ public class ManagerReviewServiceImpl implements ManagerReviewService {
     // ─── VALIDATE ─────────────────────────────────────────────────────────
 
     private void validateManagerRole(User user) {
-        String role = user.getRole() != null ? user.getRole().getName() : "";
-        String normalizedRole = role.trim().toUpperCase(Locale.ROOT);
-
-        if (normalizedRole.startsWith("ROLE_")) {
-            normalizedRole = normalizedRole.substring("ROLE_".length());
+        if (user.getRole() == null) {
+            throw new AccessDeniedException("Người dùng không có vai trò hợp lệ.");
         }
+        String r = user.getRole().getName().toUpperCase();
+        boolean isValid = r.endsWith("MANAGER") || r.endsWith("ADMIN") || r.endsWith("HR") || r.endsWith("MENTOR");
 
-        if (!"MANAGER".equals(normalizedRole) && !"ADMIN".equals(normalizedRole)
-                && !"HR".equals(normalizedRole) && !"MENTOR".equals(normalizedRole)) {
+        if (!isValid) {
             throw new AccessDeniedException(
                     "Chỉ Manager, Admin, HR hoặc Mentor mới có quyền thực hiện chức năng này.");
         }

@@ -78,11 +78,11 @@ public class SecurityConfig {
 
                         // ── Admin/Users: endpoint dùng chung ADMIN + HR ───────────────
                         // HR cần gọi để tải danh sách user khi tạo hồ sơ intern
-                        .requestMatchers(HttpMethod.GET, "/api/admin/users/all")
-                        .hasAnyRole("ADMIN", "HR")
+                        .requestMatchers("/api/admin/users/all")
+                        .hasAnyRole("ADMIN", "HR", "MANAGER", "MENTOR")
 
                         // ── Toàn bộ /api/admin/** còn lại chỉ ADMIN ──────────────────
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "MANAGER", "MENTOR", "HR")
                         .requestMatchers("/api/export/**").authenticated()
 
                         // ── Radar Analytics ───────────────────────────────────────────
