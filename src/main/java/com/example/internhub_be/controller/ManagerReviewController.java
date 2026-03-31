@@ -27,7 +27,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/manager/reviews")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('MANAGER', 'ADMIN', 'HR', 'MENTOR')")
 public class ManagerReviewController {
 
     private final ManagerReviewService reviewService;

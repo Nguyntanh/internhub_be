@@ -50,7 +50,7 @@ public class AdminController {
      * GET /api/admin/users/all
      * Lấy toàn bộ danh sách người dùng (ADMIN và HR dùng cho picker thêm nhân sự).
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'HR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'HR', 'MANAGER', 'MENTOR')")
     @GetMapping("/all")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = adminUserService.getAllUsers();

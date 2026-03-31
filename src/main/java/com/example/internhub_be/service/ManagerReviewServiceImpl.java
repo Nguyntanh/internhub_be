@@ -380,8 +380,10 @@ public class ManagerReviewServiceImpl implements ManagerReviewService {
             normalizedRole = normalizedRole.substring("ROLE_".length());
         }
 
-        if (!"MANAGER".equals(normalizedRole) && !"ADMIN".equals(normalizedRole)) {
-            throw new AccessDeniedException("Chỉ Manager hoặc Admin mới có quyền thực hiện chức năng này.");
+        if (!"MANAGER".equals(normalizedRole) && !"ADMIN".equals(normalizedRole)
+                && !"HR".equals(normalizedRole) && !"MENTOR".equals(normalizedRole)) {
+            throw new AccessDeniedException(
+                    "Chỉ Manager, Admin, HR hoặc Mentor mới có quyền thực hiện chức năng này.");
         }
     }
 
